@@ -1,7 +1,7 @@
 #ifndef USE_MAKE
 
-#define G071ESC
-//#define IFLIGHT
+//#define IFLIGHT55
+//#define IFLIGHT80
 //#define MP6531
 //#define TMOTOR55     // like iflight but with leds
 //#define TMOTOR45
@@ -11,8 +11,11 @@
 //#define WRAITH32
 //#define AIKON20X20
 //#define AIKONSINGLE
+//#define FLYCOLOR
+//#define TMOTORF45A
+//#define TurnigyMultiStar
 
-//#define G072ESC
+//#define G071_128K
 //#define G071ENABLE
 //#define G071_OPEN_DRAIN
 //#define G071_OPEN_DRAIN_B
@@ -186,8 +189,8 @@
 #define TARGET_VOLTAGE_DIVIDER  225
 #endif
 
-#ifdef  G071ESC
-#define FIRMWARE_NAME  			    "G071 DevESC "
+#ifdef  G071_128K
+#define FIRMWARE_NAME  			    "G071 128kESC "
 #define DEAD_TIME               60
 #define MILLIVOLT_PER_AMP       15
 #define CURRENT_OFFSET          0
