@@ -6,7 +6,7 @@ CP = $(ARM_SDK_PREFIX)objcopy
 ECHO = echo
 
 # common variables
-IDENTIFIER := AM32
+IDENTIFIER := Crawler
 
 # Folders
 HAL_FOLDER := Mcu

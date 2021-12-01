@@ -23,6 +23,11 @@
 *	-Fixed Debug Logging
 *	-Fixed Low Voltage shutdown
 *	-Fixed thermal shutdown loop
+*
+* V1.2 - Change Log
+*	-limited min wait time to 20 microseconds to prevent high speed stall
+*	-Improved switch over/hard stall boost
+*	-changed sine switch over to force 3 full rotations for improved high load starts/high duty cycle request
 */
 #include <stdint.h>
 #include "main.h"
@@ -43,7 +48,7 @@
 //===========================================================================
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 15
+#define VERSION_MINOR 20
 char dir_reversed = 0;
 char brake_on_stop = 1;
 char program_running = 1; //low voltage turns off main loop
