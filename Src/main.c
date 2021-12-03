@@ -111,7 +111,7 @@ uint16_t last_duty_cycle = 0;
 uint16_t maximum_duty_cycle = DEAD_TIME;
 uint16_t starting_duty_orig = DEAD_TIME;
 uint16_t maximum_duty_orig = DEAD_TIME;
-uint16_t duty_cycle_multiplier = 350; //130 = 30% power increase
+uint16_t duty_cycle_multiplier = 300; //130 = 30% power increase
 uint16_t tim1_arr = TIM1_AUTORELOAD;         // current auto reset value
 uint16_t TIMER1_MAX_ARR = TIM1_AUTORELOAD;
 uint16_t commutation_intervals[6] = { 0 };
@@ -189,7 +189,9 @@ int lowside = 3;
 int signaltimeout = 0;
 int deg_smooth_index = 0;
 int ramp_down_counter = 0;
+int ramp_up_counter = 0;
 int ramp_down_interval = 30;
+int ramp_up_interval = 5;
 int sin_cycle_complete = 0;
 
 char VOLTAGE_DIVIDER = TARGET_VOLTAGE_DIVIDER;     // 100k upper and 10k lower resistor in divider
@@ -781,7 +783,10 @@ void tenKhzRoutine(){
 
 				
 				if (stuckcounter > 20000) {
-					stall_boost++;
+					if ((ramp_up_counter % ramp_up_interval) == 0) 
+						stall_boost++;
+
+					ramp_up_counter++;
 					commutation_interval = 10000;
 
 					if (!stall_active) {
@@ -789,13 +794,18 @@ void tenKhzRoutine(){
 						old_routine = 1;
 						stall_active = 1;
 					}
+					else if(stuckcounter > 25000){
+						stepper_sine = 1;
+					}
 				}
 				else if (stall_boost > 0) {
 					ramp_down_counter++;
-					if (ramp_down_counter % ramp_down_interval) {
+					if ((ramp_down_counter % ramp_down_interval) == 0)
 						stall_boost--;
-						ramp_down_counter = 0;
-					}
+				}
+				else {
+					ramp_up_counter = 0;
+					ramp_down_counter = 0;
 				}
 				stuckcounter++;
 
