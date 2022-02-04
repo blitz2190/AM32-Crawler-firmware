@@ -121,7 +121,6 @@ uint16_t ADC_raw_current;
 uint16_t ADC_raw_input;
 uint16_t ADC_smoothed_input = 0;
 uint16_t converted_degrees;
-uint16_t e_rpm;      // electrical revolution /100 so,  123 is 12300 erpm
 uint16_t adjusted_duty_cycle;
 uint16_t thiszctime;
 uint16_t commutation_interval = 12500;
@@ -165,8 +164,6 @@ int phase_C_position = 239;
 int step_delay = 100;
 int forward = 1;
 int gate_drive_offset = 60;
-int stuckcounter = 0;
-int k_erpm = 0;
 int bad_count = 0;
 int dshotcommand;
 int armed_count_threshold = 1000;
@@ -213,7 +210,7 @@ char max_amplitude = 180;
 char last_inc = 1;
 char stepper_sine = 0;
 char max_sin_inc = 3;
-char old_routine = 0;
+char trap_open_loop = 0;
 char armed = 0;
 char inputSet = 0;
 char dshot = 0;
@@ -495,10 +492,6 @@ void loadEEpromSettings(){
 
 	BRUSHED_MODE = eepromBuffer[43];
 
-	//development only - will be removed
-	//K_p_duty = eepromBuffer[44] / (float)10;
-	//K_i_duty = eepromBuffer[45] / (float)10;
-	//K_d_duty = eepromBuffer[46] / (float)10;
 }
 
 void saveEEpromSettings(){
@@ -575,7 +568,7 @@ void commutate(){
 	changeCompInput();
 
 	if(average_interval > 2000){
-		old_routine = 1;
+		trap_open_loop = 1;
 	}
 
 	bemfcounter = 0;
@@ -592,7 +585,7 @@ void PeriodElapsedCallback(){
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
 
-	if(!old_routine){
+	if(!trap_open_loop){
 		enableCompInterrupts();     // enable comp interrupt
 	}
 
@@ -600,7 +593,6 @@ void PeriodElapsedCallback(){
 		zero_crosses++;
 	}
 
-	stuckcounter = 0;
 	stall_active = 0;
 
 	//	UTILITY_TIMER->CNT = 0;
@@ -719,7 +711,7 @@ void tenKhzRoutine(){
 		if (input >= 127 && armed){
 			if (running == 0){
 				allOff();
-				if(!old_routine){
+				if(!trap_open_loop){
 					startMotor();
 				}
 				running = 1;
@@ -749,7 +741,7 @@ void tenKhzRoutine(){
 
 			if (!running){
 				duty_cycle = 0;
-				old_routine = 1;
+				trap_open_loop = 1;
 				zero_crosses = 0;
 				bad_count = 0;
 				if(!brake_on_stop){		  
@@ -782,7 +774,7 @@ void tenKhzRoutine(){
 				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 
 				
-				if (stuckcounter > 20000) {
+				if (INTERVAL_TIMER->CNT > 20000) {
 					if ((ramp_up_counter % ramp_up_interval) == 0) 
 						stall_boost++;
 
@@ -791,10 +783,10 @@ void tenKhzRoutine(){
 
 					if (!stall_active) {
 						zero_crosses = 0;
-						old_routine = 1;
+						trap_open_loop = 1;
 						stall_active = 1;
 					}
-					else if(stuckcounter > 25000){
+					else if(INTERVAL_TIMER->CNT > 25000){
 						stepper_sine = 1;
 					}
 				}
@@ -807,7 +799,6 @@ void tenKhzRoutine(){
 					ramp_up_counter = 0;
 					ramp_down_counter = 0;
 				}
-				stuckcounter++;
 
 				minimum_duty_cycle = starting_duty_orig + boost + stall_boost;
 
@@ -976,7 +967,7 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	zero_crosses++;
 	
 	if (zero_crosses >= 100 && commutation_interval <= 2000) {
-		old_routine = 0;
+		trap_open_loop = 0;
 		enableCompInterrupts();          // enable interrupt
 	}
 }
@@ -985,7 +976,7 @@ void SwitchOver() {
 	sin_cycle_complete = 0;
 	stepper_sine = 0;
 	running = 1;
-	old_routine = 1;
+	trap_open_loop = 1;
 	prop_brake_active = 0;
 	stall_active = 0;
 	commutation_interval = 9000;
@@ -1221,14 +1212,13 @@ int main(void)
 #ifdef USE_ADC_INPUT
 	UpdateADCInput();
 #endif
-	stuckcounter = 0;
+	if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
+		CalibrateThrottle();
+	}
+
 	while (program_running){
 
-		LL_IWDG_ReloadCounter(IWDG);
-
-		if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
-			CalibrateThrottle();
-		}
+		LL_IWDG_ReloadCounter(IWDG);		
 
 		adc_counter++;
 		if(adc_counter>100){   // for testing adc and telemetry
@@ -1282,7 +1272,7 @@ int main(void)
 			#endif
 		}
 
-		if (degrees_celsius >= 115) {
+		if (degrees_celsius >= 110) {
 			if (thermal_protection_active == 0) {
 				allOff();
 				maskPhaseInterrupts();
@@ -1307,7 +1297,7 @@ int main(void)
 			prop_brake_active = 1;
 			continue;
 		}
-		else if (degrees_celsius < 110 && thermal_protection_active)
+		else if (degrees_celsius < 105 && thermal_protection_active)
 			thermal_protection_active = 0;
 		
 
@@ -1315,14 +1305,13 @@ int main(void)
 		#ifdef USE_ADC_INPUT
 		UpdateADCInput();		
 		#endif
-		//stuckcounter = 0;
 
 		if (newinput > (1000 + (servo_dead_band<<1))) {
 			if (forward == dir_reversed) {
-				if(commutation_interval > 1500 || stepper_sine){
+				if(running || stepper_sine){
 					forward = 1 - dir_reversed;
 					zero_crosses = 0;
-					old_routine = 1;
+					trap_open_loop = 1;
 					maskPhaseInterrupts();
 				}
 				else{
@@ -1333,9 +1322,9 @@ int main(void)
 		}
 		else if (newinput < (1000 -(servo_dead_band<<1))) {
 			if (forward == (1 - dir_reversed)) {
-				if(commutation_interval > 1500 || stepper_sine){
+				if(running || stepper_sine){
 					zero_crosses = 0;
-					old_routine = 1;
+					trap_open_loop = 1;
 					forward = dir_reversed;
 					maskPhaseInterrupts();
 				}
@@ -1393,9 +1382,6 @@ int main(void)
 		}
 	 	  
 		if ( stepper_sine == 0){
-			e_rpm = running * (100000/ e_com_time) * 6;
-			k_erpm =  e_rpm / 10;
-
 			if (zero_crosses < 100 || commutation_interval > 500) {
 				filter_level = 12;
 			} 
@@ -1408,7 +1394,7 @@ int main(void)
 			}
 
 			/**************** old routine*********************/
-			if (old_routine && running){
+			if (trap_open_loop && running){
 				maskPhaseInterrupts();
 				getBemfState();
 				if (!zcfound){
@@ -1429,7 +1415,7 @@ int main(void)
 			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
 				zcfoundroutine();
 				maskPhaseInterrupts();
-				old_routine = 1;
+				trap_open_loop = 1;
 				running = 0;
 				zero_crosses = 0;
 			}
@@ -1441,7 +1427,7 @@ int main(void)
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
 				
-				 if (input > sine_mode_changeover && sin_cycle_complete >= 2)
+				 if (input > sine_mode_changeover && sin_cycle_complete >= 3)
 					SwitchOver();
 				else
 					delayMicros(step_delay);
