@@ -177,8 +177,8 @@ int newinput = 0;
 int zero_crosses;
 int zcfound = 0;
 int bemfcounter;
-int min_bemf_counts_up = 6;
-int min_bemf_counts_down = 6;
+int min_bemf_counts_up = 10;
+int min_bemf_counts_down = 10;
 int adc_timer = 600;
 int lastzctime = 0;
 int phase = 1;
@@ -638,7 +638,7 @@ void interruptRoutine(){
 		if (zero_crosses < 10000)
 			zero_crosses++;
 
-		if (zero_crosses > 200 && commutation_interval <= 2000)
+		if (zero_crosses > 100)
 			old_routine = 0;
 		else
 			return;
@@ -798,7 +798,7 @@ void tenKhzRoutine(){
 
 				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 
-				
+				/*
 				if (stuckcounter > 20000) {
 					if ((ramp_up_counter % ramp_up_interval) == 0) 
 						stall_boost++;
@@ -822,7 +822,7 @@ void tenKhzRoutine(){
 					ramp_down_counter = 0;
 				}
 				stuckcounter++;
-
+				*/
 				minimum_duty_cycle = starting_duty_orig + boost + stall_boost;
 
 				if (minimum_duty_cycle > maximum_duty_orig)
