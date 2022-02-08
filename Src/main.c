@@ -638,7 +638,7 @@ void interruptRoutine(){
 		if (zero_crosses < 10000)
 			zero_crosses++;
 
-		if (zero_crosses > 200 && commutation_intervacommutation_interval <= 2000)
+		if (zero_crosses > 200 && commutation_interval <= 2000)
 			old_routine = 0;
 		else
 			return;
