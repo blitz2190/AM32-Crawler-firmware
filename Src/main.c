@@ -1433,8 +1433,9 @@ int main(void)
 			}
 
 			/**************** old routine*********************/
-			if (old_routine && running){
+			if (old_routine && running && zcfound == 0){
 				zcfoundroutine();
+				zcfound = 1;
 			}
 			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
 				stepper_sine = 1;
