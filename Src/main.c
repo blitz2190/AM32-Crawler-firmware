@@ -600,6 +600,9 @@ void PeriodElapsedCallback(){
 	stuckcounter = 0;
 	stall_active = 0;
 
+	if (zero_crosses < 10000)
+		zero_crosses++;
+
 	//	UTILITY_TIMER->CNT = 0;
 }
 
@@ -979,6 +982,9 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	while (INTERVAL_TIMER->CNT - thiszctime < waitTime - advance){
 
 	}
+
+	if (!old_routine)
+		return;
 
 	commutate();
 
