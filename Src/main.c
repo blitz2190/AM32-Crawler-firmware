@@ -589,10 +589,6 @@ void PeriodElapsedCallback(){
 		enableCompInterrupts();     // enable comp interrupt
 	}
 
-	if(zero_crosses<10000){
-		zero_crosses++;
-	}
-
 	stall_active = 0;
 
 	//	UTILITY_TIMER->CNT = 0;
@@ -600,44 +596,53 @@ void PeriodElapsedCallback(){
 
 
 void interruptRoutine(){
-	/*if (average_interval > 125){
-		stuckcounter++;             // stuck at 100 interrupts before the main loop happens again.
-		if (stuckcounter > 100){
-			maskPhaseInterrupts();
-			zero_crosses = 0;
-			return;
-		}
-	}*/
-
-	thiszctime = INTERVAL_TIMER->CNT;
-
-	if (rising){
-		for (int i = 0; i < filter_level; i++){
-			if(LL_COMP_ReadOutputLevel(MAIN_COMP) == LL_COMP_OUTPUT_LEVEL_HIGH){
-			return;
-			}
-		}
-	}
-	else{
-		for (int i = 0; i < filter_level; i++){
-			if(LL_COMP_ReadOutputLevel(MAIN_COMP) == LL_COMP_OUTPUT_LEVEL_LOW){
+	if (!trap_open_loop) {
+		/*if (average_interval > 125){
+			stuckcounter++;             // stuck at 100 interrupts before the main loop happens again.
+			if (stuckcounter > 100){
+				maskPhaseInterrupts();
+				zero_crosses = 0;
 				return;
 			}
+		}*/
+
+		thiszctime = INTERVAL_TIMER->CNT;
+
+		if (rising) {
+			for (int i = 0; i < filter_level; i++) {
+				if (LL_COMP_ReadOutputLevel(MAIN_COMP) == LL_COMP_OUTPUT_LEVEL_HIGH) {
+					return;
+				}
+			}
 		}
+		else {
+			for (int i = 0; i < filter_level; i++) {
+				if (LL_COMP_ReadOutputLevel(MAIN_COMP) == LL_COMP_OUTPUT_LEVEL_LOW) {
+					return;
+				}
+			}
+		}
+		maskPhaseInterrupts();
+
+		INTERVAL_TIMER->CNT = 0;
+
+		waitTime = waitTime >> fast_accel;
+
+		if (waitTime < min_wait_time)
+			waitTime = min_wait_time;
+
+		COM_TIMER->CNT = 0;
+		COM_TIMER->ARR = waitTime;
+		COM_TIMER->SR = 0x00;
+		COM_TIMER->DIER |= (0x1UL << (0U));             // enable COM_TIMER interrupt
 	}
-	maskPhaseInterrupts();
-	
-	INTERVAL_TIMER->CNT = 0 ;
-
-	waitTime = waitTime >> fast_accel;
-
-	if (waitTime < min_wait_time)
-		waitTime = min_wait_time;
-
-	COM_TIMER->CNT = 0;
-	COM_TIMER->ARR = waitTime;
-	COM_TIMER->SR = 0x00;
-	COM_TIMER->DIER |= (0x1UL << (0U));             // enable COM_TIMER interrupt
+	else {
+		if (zero_crosses < 10000) {
+			zero_crosses++;
+		}
+		if (zero_crosses > 100)
+			trap_open_loop = 0;
+	}
 }
 
 void startMotor() {
@@ -787,7 +792,9 @@ void tenKhzRoutine(){
 						stall_active = 1;
 					}
 					else if(INTERVAL_TIMER->CNT > 25000){
+						zero_crosses = 0;
 						stepper_sine = 1;
+						running = 0;
 					}
 				}
 				else if (stall_boost > 0) {
@@ -947,7 +954,7 @@ void advanceincrement(int input){
 	TIM1->CCR3 = (amplitude * pwmSin[2][phase_C_position]) + (amplitude + 2);    
 }
 
-void zcfoundroutine(){   // only used in polling mode, blocking routine.
+void TrapOpenLoop(){   // only used in polling mode, blocking routine.
 	thiszctime = INTERVAL_TIMER->CNT;
 	INTERVAL_TIMER->CNT = 0;
 	commutation_interval = (thiszctime + (3*commutation_interval)) / 4;
@@ -961,15 +968,16 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	}
 
 	commutate();
+	enableCompInterrupts();
 	bemfcounter = 0;
 	bad_count = 0;
 
-	zero_crosses++;
+	/*zero_crosses++;
 	
 	if (zero_crosses >= 100 && commutation_interval <= 2000) {
 		trap_open_loop = 0;
 		enableCompInterrupts();          // enable interrupt
-	}
+	}*/
 }
 
 void SwitchOver() {
@@ -1401,23 +1409,16 @@ int main(void)
 					if (rising){
 						if (bemfcounter > min_bemf_counts_up){
 							zcfound = 1;
-							zcfoundroutine();
+							TrapOpenLoop();
 						}
 					}
 					else{
 						if (bemfcounter > min_bemf_counts_down){
 							zcfound = 1;
-							zcfoundroutine();
+							TrapOpenLoop();
 						}
 					}
 				}
-			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
-				zcfoundroutine();
-				maskPhaseInterrupts();
-				trap_open_loop = 1;
-				running = 0;
-				zero_crosses = 0;
 			}
 		}
 		else{            // stepper sine
