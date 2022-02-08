@@ -576,24 +576,28 @@ void commutate(){
 }
 
 void PeriodElapsedCallback(){
-	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
-	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
-	
-	commutate();
-	advance = (commutation_interval>>3) * advance_level;   // 60 divde 8 7.5 degree increments
-	waitTime = (commutation_interval >>1)  - advance;
-	if (waitTime < min_wait_time)
-		waitTime = min_wait_time;
+	if (!trap_open_loop || zero_crosses > 100) {
+		trap_open_loop = 0;
+		COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
+		commutation_interval = ((3 * commutation_interval) + thiszctime) >> 2;
 
-	if(!trap_open_loop){
+		commutate();
+		advance = (commutation_interval >> 3)* advance_level;   // 60 divde 8 7.5 degree increments
+		waitTime = (commutation_interval >> 1) - advance;
+		if (waitTime < min_wait_time)
+			waitTime = min_wait_time;
+
+
 		enableCompInterrupts();     // enable comp interrupt
+
+		if (zero_crosses > 10)
+
+			stall_active = 0;
 	}
 
-	if(zero_crosses<10000){
+	if (zero_crosses < 10000) {
 		zero_crosses++;
 	}
-
-	stall_active = 0;
 
 	//	UTILITY_TIMER->CNT = 0;
 }
@@ -641,20 +645,17 @@ void interruptRoutine(){
 }
 
 void tenKhzRoutine(){
+
+	if (!program_running || thermal_protection_active || throttle_learn_active) {
+		return;
+	}
+
 	consumption_timer++;
 
 	if(consumption_timer > 10000){      // 1s sample interval
 		consumed_current = (float)actual_current/3600 + consumed_current;
 		consumption_timer = 0;
 	}
-
-	if (!program_running) {
-		allOff();
-		return;
-	}
-
-	if (thermal_protection_active || throttle_learn_active)
-		return;
 
 	if(!armed && inputSet){
 		if(adjusted_input == 0){
@@ -699,16 +700,6 @@ void tenKhzRoutine(){
 
 	if(!stepper_sine && BRUSHED_MODE == 0){
 		if (input >= 127 && armed){
-			if (running == 0){
-				allOff();
-				running = 1;
-				last_duty_cycle = minimum_duty_cycle;
-				#ifdef tmotor55
-				GPIOB->BRR = LL_GPIO_PIN_3;  // off red
-				GPIOA->BRR = LL_GPIO_PIN_15; // off green
-				GPIOB->BSRR = LL_GPIO_PIN_5;  // on blue
-				#endif
-			}
 			
 			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
 			prop_brake_active = 0;
@@ -773,7 +764,7 @@ void tenKhzRoutine(){
 						trap_open_loop = 1;
 						stall_active = 1;
 					}
-					else if(INTERVAL_TIMER->CNT > 25000){
+					else if(INTERVAL_TIMER->CNT > 30000){
 						stepper_sine = 1;
 					}
 				}
@@ -934,7 +925,7 @@ void advanceincrement(int input){
 	TIM1->CCR3 = (amplitude * pwmSin[2][phase_C_position]) + (amplitude + 2);    
 }
 
-void zcfoundroutine(){   // only used in polling mode, blocking routine.
+void TrapOpenLoop(){   // only used in polling mode, blocking routine.
 	thiszctime = INTERVAL_TIMER->CNT;
 	INTERVAL_TIMER->CNT = 0;
 	commutation_interval = (thiszctime + (3*commutation_interval)) / 4;
@@ -946,17 +937,15 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	while (INTERVAL_TIMER->CNT - thiszctime < waitTime - advance){
 
 	}
-
+	enableCompInterrupts();
 	commutate();
 	bemfcounter = 0;
 	bad_count = 0;
-
-	zero_crosses++;
 	
-	if (zero_crosses >= 100 && commutation_interval <= 2000) {
+	/*if (zero_crosses >= 100 && commutation_interval <= 2000) {
 		trap_open_loop = 0;
 		enableCompInterrupts();          // enable interrupt
-	}
+	}*/
 }
 
 void SwitchOver() {
@@ -1388,18 +1377,18 @@ int main(void)
 					if (rising){
 						if (bemfcounter > min_bemf_counts_up){
 							zcfound = 1;
-							zcfoundroutine();
+							TrapOpenLoop();
 						}
 					}
 					else{
 						if (bemfcounter > min_bemf_counts_down){
 							zcfound = 1;
-							zcfoundroutine();
+							TrapOpenLoop();
 						}
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
 				running = 0;
 				stepper_sine = 1;
 			}
