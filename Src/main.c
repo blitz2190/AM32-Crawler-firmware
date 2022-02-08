@@ -620,7 +620,17 @@ void interruptRoutine(){
 		}
 	}
 	maskPhaseInterrupts();
-	INTERVAL_TIMER->CNT = 0 ;
+
+	if (old_routine) {
+		zero_crosses++;
+
+		if (zero_crosses >= 100 && commutation_interval <= 2000)
+			old_routine = 0;
+		else
+			return;
+	}
+
+	INTERVAL_TIMER->CNT = 0;
 
 	waitTime = waitTime >> fast_accel;
 	if (waitTime < min_wait_time)
@@ -928,6 +938,7 @@ void advanceincrement(int input){
 }
 
 void zcfoundroutine(){   // only used in polling mode, blocking routine.
+	maskPhaseInterrupts();
 	thiszctime = INTERVAL_TIMER->CNT;
 	INTERVAL_TIMER->CNT = 0;
 	commutation_interval = (thiszctime + (3*commutation_interval)) / 4;
@@ -941,27 +952,28 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	}
 
 	commutate();
+
+	enableCompInterrupts();
 	bemfcounter = 0;
 	bad_count = 0;
-
-	zero_crosses++;
-	
-	if (zero_crosses >= 100 && commutation_interval <= 2000) {
-		old_routine = 0;
-		enableCompInterrupts();          // enable interrupt
-	}
 }
 
 void SwitchOver() {
 	sin_cycle_complete = 0;
 	stepper_sine = 0;
 	running = 1;
-	old_routine = 0;
+	old_routine = 1;
 	prop_brake_active = 0;
 	last_average_interval = average_interval;
 	zero_crosses = 0;
 	prop_brake_active = 0;
+	commutation_interval = 9000;
+	average_interval = 9000;
+	last_average_interval = average_interval;
+	//  minimum_duty_cycle = ;
+	INTERVAL_TIMER->CNT = 9000;
 
+	duty_cycle = starting_duty_orig;
 	last_duty_cycle = duty_cycle;
 	adjusted_duty_cycle = ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
 	TIM1->ARR = tim1_arr;
@@ -970,9 +982,7 @@ void SwitchOver() {
 	TIM1->CCR3 = adjusted_duty_cycle;
 
 	step = changeover_step;
-	comStep(step);
-	changeCompInput();
-	enableCompInterrupts();
+	zcfoundroutine();
 }
 
 void PunchStart() { //old switchover code, good for a fast accel punch
@@ -1424,16 +1434,10 @@ int main(void)
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
 				
-				if (input > sine_mode_changeover * 2) {
-					PunchStart();
-				}
-				else if (input > sine_mode_changeover && sin_cycle_complete == 1){
-					duty_cycle = starting_duty_orig;
+				if (input > sine_mode_changeover && sin_cycle_complete == 1)
 					SwitchOver();
-				}
-				else {
+				else 
 					delayMicros(step_delay);
-				}
 			}
 			else{
 				if(brake_on_stop){
