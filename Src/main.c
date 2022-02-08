@@ -210,6 +210,14 @@ char dshot = 0;
 char servoPwm = 0;
 char step = 1;
 
+#ifdef MCU_G071
+char min_wait_time = 8;
+#endif // MCU_G071
+
+#ifdef MCU_F051
+char min_wait_time = 45;
+#endif // MCU_G071
+
 float K_p_duty = 0.03;
 float K_i_duty = 0.0001;
 float K_d_duty = 0.0085;
@@ -226,6 +234,8 @@ typedef enum
 
 #define TEMP30_CAL_VALUE ((uint16_t*)((uint32_t)0x1FFFF7B8))
 #define TEMP110_CAL_VALUE ((uint16_t*)((uint32_t)0x1FFFF7C2))
+
+const int battery_levels[3][2] = { {600,840},{900,1270},{1270,1680} };
 
 const float pwmSin[3][360] = {
 {0.866025403784439,
@@ -370,6 +380,7 @@ const float pwmSin[3][360] = {
 -0.121866722626293,-0.104525829832906,-0.0871530974318957,-0.0697538173303821,-0.0523332895221773,-0.0348968204733563,-0.0174497215058549}
 };
 
+
 void checkForHighSignal(){
 	changeToInput();
 	LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_DOWN);
@@ -447,7 +458,7 @@ void loadEEpromSettings(){
 		LOW_VOLTAGE_CUTOFF = 0;
 	}
 
-	low_cell_volt_cutoff = eepromBuffer[28] + 300; // 2.5 to 3.5 volts per cell range
+	low_cell_volt_cutoff = eepromBuffer[28] + 250; // 2.5 to 3.5 volts per cell range
 
 	if(eepromBuffer[29] > 4 && eepromBuffer[29] < 26){            // sine mode changeover 5-25 percent throttle
 		sine_mode_changeover_thottle_level = eepromBuffer[29];
@@ -568,6 +579,8 @@ void PeriodElapsedCallback(){
 	commutate();
 	advance = (commutation_interval>>3) * advance_level;   // 60 divde 8 7.5 degree increments
 	waitTime = (commutation_interval >>1)  - advance;
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
 
 	if(!old_routine){
 		enableCompInterrupts();     // enable comp interrupt
@@ -610,6 +623,8 @@ void interruptRoutine(){
 	INTERVAL_TIMER->CNT = 0 ;
 
 	waitTime = waitTime >> fast_accel;
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
 
 	COM_TIMER->CNT = 0;
 	COM_TIMER->ARR = waitTime;
@@ -653,13 +668,21 @@ void tenKhzRoutine(){
 					GPIOB->BRR = LL_GPIO_PIN_3;    // turn off red
 					GPIOA->BSRR = LL_GPIO_PIN_15;   // turn on green
 					#endif
-					if(cell_count == 0 && LOW_VOLTAGE_CUTOFF){
-						cell_count = battery_voltage / 370;
-						for (int i = 0 ; i < cell_count; i++){
+					if (cell_count == 0 && LOW_VOLTAGE_CUTOFF) {
+						for (int i = 0; i < 3; i++) {
+							if (battery_voltage >= battery_levels[i][0] && battery_voltage <= battery_levels[i][1]) {
+								cell_count = i + 2;
+								break;
+							}
+						}
+						for (int i = 0; i < cell_count; i++) {
 							playInputTune();
 							delayMillis(100);
 							LL_IWDG_ReloadCounter(IWDG);
 						}
+
+						//eepromBuffer[47] = battery_voltage / 10;
+						//saveEEpromSettings();
 					}
 					else{
 						playInputTune();
@@ -910,6 +933,8 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	commutation_interval = (thiszctime + (3*commutation_interval)) / 4;
 	advance = commutation_interval / advancedivisor;
 	waitTime = commutation_interval /2  - advance;
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
 	//	blanktime = commutation_interval / 4;
 	while (INTERVAL_TIMER->CNT - thiszctime < waitTime - advance){
 
