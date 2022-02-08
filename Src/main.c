@@ -220,6 +220,7 @@ char dshot = 0;
 char servoPwm = 0;
 char step = 1;
 char stall_active = 0;
+char interupt_enabled = 0;
 
 #ifdef MCU_G071
 char min_wait_time = 5;
@@ -591,15 +592,11 @@ void PeriodElapsedCallback(){
 	waitTime = (commutation_interval >>1)  - advance;
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
-
-	if(!old_routine){
+	
+	if (!interupt_enabled) {
 		enableCompInterrupts();     // enable comp interrupt
+		interupt_enabled = 1;
 	}
-
-	if(zero_crosses<10000){
-		zero_crosses++;
-	}
-
 	stuckcounter = 0;
 	stall_active = 0;
 
@@ -633,7 +630,21 @@ void interruptRoutine(){
 			}
 		}
 	}
-	maskPhaseInterrupts();
+
+	if (old_routine) {
+		if (zero_crosses < 10000)
+			zero_crosses++;
+
+		if (zero_crosses > 200 && commutation_intervacommutation_interval <= 2000)
+			old_routine = 0;
+		else
+			return;
+	}
+	
+	if (interupt_enabled) {
+		maskPhaseInterrupts();
+		interupt_enabled = 0;
+	}
 	
 	INTERVAL_TIMER->CNT = 0 ;
 
@@ -655,7 +666,10 @@ void startMotor() {
 		INTERVAL_TIMER->CNT = 5000;
 		running = 1;
 	}
-	enableCompInterrupts();
+	if (!interupt_enabled) {
+		enableCompInterrupts();
+		interupt_enabled = 1;
+	}
 }
 
 void tenKhzRoutine(){
@@ -763,7 +777,7 @@ void tenKhzRoutine(){
 			stepper_sine = 1;
 			minimum_duty_cycle = starting_duty_orig;
 		}
-		else if (input < ((sine_mode_changeover / 100) * 98) && step == changeover_step) {
+		else if (input < ((sine_mode_changeover / 100) * 96) && step == changeover_step) {
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
@@ -793,9 +807,6 @@ void tenKhzRoutine(){
 						zero_crosses = 0;
 						old_routine = 1;
 						stall_active = 1;
-					}
-					else if(stuckcounter > 25000){
-						stepper_sine = 1;
 					}
 				}
 				else if (stall_boost > 0) {
@@ -970,15 +981,14 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	}
 
 	commutate();
+
+	if (!interupt_enabled) {
+		enableCompInterrupts();
+	}
+
+
 	bemfcounter = 0;
 	bad_count = 0;
-
-	zero_crosses++;
-	
-	if (zero_crosses >= 100 && commutation_interval <= 2000) {
-		old_routine = 0;
-		enableCompInterrupts();          // enable interrupt
-	}
 }
 
 void SwitchOver() {
@@ -1285,7 +1295,10 @@ int main(void)
 		if (degrees_celsius >= 115) {
 			if (thermal_protection_active == 0) {
 				allOff();
-				maskPhaseInterrupts();
+				if (interupt_enabled) {
+					maskPhaseInterrupts();
+					interupt_enabled = 0;
+				}
 				thermal_protection_active = 1;
 
 				if (last_error != 2) {
@@ -1323,7 +1336,10 @@ int main(void)
 					forward = 1 - dir_reversed;
 					zero_crosses = 0;
 					old_routine = 1;
-					maskPhaseInterrupts();
+					if (interupt_enabled) {
+						maskPhaseInterrupts();
+						interupt_enabled = 0;
+					}
 				}
 				else{
 					newinput = 1000;
@@ -1337,7 +1353,10 @@ int main(void)
 					zero_crosses = 0;
 					old_routine = 1;
 					forward = dir_reversed;
-					maskPhaseInterrupts();
+					if (interupt_enabled) {
+						maskPhaseInterrupts();
+						interupt_enabled = 0;
+					}
 				}
 				else{
 					newinput = 1000;
@@ -1409,34 +1428,24 @@ int main(void)
 
 			/**************** old routine*********************/
 			if (old_routine && running){
-				maskPhaseInterrupts();
-				getBemfState();
-				if (!zcfound){
-					if (rising){
-						if (bemfcounter > min_bemf_counts_up){
-							zcfound = 1;
-							zcfoundroutine();
-						}
-					}
-					else{
-						if (bemfcounter > min_bemf_counts_down){
-							zcfound = 1;
-							zcfoundroutine();
-						}
-					}
-				}
-			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
 				zcfoundroutine();
-				maskPhaseInterrupts();
-				old_routine = 1;
+			}
+			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
+				stepper_sine = 1;
+				if (interupt_enabled) {
+					maskPhaseInterrupts();
+					interupt_enabled = 0;
+				}
 				running = 0;
 				zero_crosses = 0;
 			}
 		}
 		else{            // stepper sine
 			if(input >= 47 && armed){
-				maskPhaseInterrupts();
+				if (interupt_enabled) {
+					maskPhaseInterrupts();
+					interupt_enabled = 0;
+				}
 				allpwm();
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
