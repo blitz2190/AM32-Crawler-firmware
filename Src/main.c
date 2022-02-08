@@ -170,8 +170,8 @@ int newinput = 0;
 int zero_crosses;
 int zcfound = 0;
 int bemfcounter;
-int min_bemf_counts_up = 7;
-int min_bemf_counts_down = 7;
+int min_bemf_counts_up = 5;
+int min_bemf_counts_down = 5;
 int adc_timer = 600;
 int lastzctime = 0;
 int phase = 1;
@@ -603,7 +603,14 @@ void interruptRoutine(){
 		}
 	}
 
-	thiszctime = INTERVAL_TIMER->CNT;
+	if (old_routine) {
+		zero_crosses++;
+
+		if (zero_crosses >= 100 && commutation_interval <= 2000)
+			old_routine = 0;
+		else
+			return;
+	}
 
 	if (rising){
 		for (int i = 0; i < filter_level; i++){
@@ -621,15 +628,7 @@ void interruptRoutine(){
 	}
 	maskPhaseInterrupts();
 
-	if (old_routine) {
-		zero_crosses++;
-
-		if (zero_crosses >= 100 && commutation_interval <= 2000)
-			old_routine = 0;
-		else
-			return;
-	}
-
+	thiszctime = INTERVAL_TIMER->CNT;
 	INTERVAL_TIMER->CNT = 0;
 
 	waitTime = waitTime >> fast_accel;
