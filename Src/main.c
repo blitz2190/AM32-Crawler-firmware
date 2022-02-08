@@ -782,6 +782,10 @@ void tenKhzRoutine(){
 				else if (minimum_duty_cycle < starting_duty_orig) {
 					minimum_duty_cycle = starting_duty_orig;
 				}
+
+				if (INTERVAL_TIMER->CNT > 25000) {
+					old_routine = 1;
+				}
 			}
 
 			if(maximum_throttle_change_ramp){
@@ -1397,7 +1401,7 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
 				//zcfoundroutine();
 				maskPhaseInterrupts();
 				stepper_sine = 1;
@@ -1444,7 +1448,7 @@ int main(void)
 
 	allOff();
 	maskPhaseInterrupts();
-	delayMillis(1000);		
+	delayMillis(200);		
 	playPowerDownTune();
 	
 	/*
