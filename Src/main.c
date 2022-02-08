@@ -181,6 +181,7 @@ int floating = 2;
 int lowside = 3;
 int signaltimeout = 0;
 int deg_smooth_index = 0;
+int sin_cycle_complete = 0;
 
 char maximum_throttle_change_ramp = 1;
 char VOLTAGE_DIVIDER = TARGET_VOLTAGE_DIVIDER;     // 100k upper and 10k lower resistor in divider
@@ -199,7 +200,6 @@ char amplitude = 165;//200 gets very hot
 char default_amplitude = 165;
 char min_amplitude = 115;
 char max_amplitude = 180;
-char sin_cycle_complete = 0;
 char last_inc = 1;
 char stepper_sine = 0;
 char max_sin_inc = 3;
@@ -755,6 +755,7 @@ void tenKhzRoutine(){
 			phase_B_position = 119;
 			phase_C_position = 239;
 			stepper_sine = 1;
+			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
@@ -762,6 +763,7 @@ void tenKhzRoutine(){
 			phase_B_position = 180;
 			phase_C_position = 300;
 			stepper_sine = 1;
+			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
 
@@ -784,12 +786,6 @@ void tenKhzRoutine(){
 			}
 
 			if(maximum_throttle_change_ramp){
-				if(average_interval > 500){
-					max_duty_cycle_change = 5;
-				}
-				else{
-					max_duty_cycle_change = 10;
-				}
 
 				if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change){
 					duty_cycle = last_duty_cycle + max_duty_cycle_change;
@@ -885,7 +881,7 @@ void advanceincrement(int input){
 	if (forward){
 		
 		if(phase_A_position < sin_swicthover_angle && phase_A_position + inc >= sin_swicthover_angle)
-			sin_cycle_complete = 1;
+			sin_cycle_complete++;
 		
 		phase_A_position += inc;
 
@@ -907,7 +903,7 @@ void advanceincrement(int input){
 	else{
 
 		if (phase_A_position > sin_swicthover_angle&& phase_A_position - inc <= sin_swicthover_angle)
-			sin_cycle_complete = 1;
+			sin_cycle_complete++;
 
 		phase_A_position -= inc;
 		if (phase_A_position < 0){
@@ -982,23 +978,6 @@ void SwitchOver() {
 	TIM1->CCR3 = adjusted_duty_cycle;
 
 	step = changeover_step;
-	zcfoundroutine();
-}
-
-void PunchStart() { //old switchover code, good for a fast accel punch
-	stepper_sine = 0;
-	running = 1;
-	old_routine = 1;
-	commutation_interval = 9000;
-	average_interval = 9000;
-	last_average_interval = average_interval;
-	//  minimum_duty_cycle = ;
-	INTERVAL_TIMER->CNT = 9000;
-	zero_crosses = 0;
-	prop_brake_active = 0;
-	step = changeover_step;                    // rising bemf on a same as position 0.
-	comStep(step);// rising bemf on a same as position 0.
-	LL_TIM_GenerateEvent_UPDATE(TIM1);
 	zcfoundroutine();
 }
 
@@ -1419,10 +1398,11 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
-				zcfoundroutine();
+			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
+				//zcfoundroutine();
 				maskPhaseInterrupts();
-				old_routine = 1;
+				stepper_sine = 1;
+				sin_cycle_complete = 0;
 				running = 0;
 				zero_crosses = 0;
 			}
@@ -1434,7 +1414,7 @@ int main(void)
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
 				
-				if (input > sine_mode_changeover && sin_cycle_complete == 1)
+				if (input > sine_mode_changeover && sin_cycle_complete >= 3)
 					SwitchOver();
 				else 
 					delayMicros(step_delay);
