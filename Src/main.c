@@ -177,8 +177,8 @@ int newinput = 0;
 int zero_crosses;
 int zcfound = 0;
 int bemfcounter;
-int min_bemf_counts_up = 7;
-int min_bemf_counts_down = 7;
+int min_bemf_counts_up = 6;
+int min_bemf_counts_down = 6;
 int adc_timer = 600;
 int lastzctime = 0;
 int phase = 1;
@@ -1433,11 +1433,29 @@ int main(void)
 			}
 
 			/**************** old routine*********************/
-			if (old_routine && running && zcfound == 0){
-				zcfoundroutine();
-				zcfound = 1;
+			if (old_routine && running){
+				if (interupt_enabled) {
+					maskPhaseInterrupts();
+					interupt_enabled = 0;
+				}
+
+				getBemfState();
+				if (!zcfound) {
+					if (rising) {
+						if (bemfcounter > min_bemf_counts_up) {
+							zcfound = 1;
+							zcfoundroutine();
+						}
+					}
+					else {
+						if (bemfcounter > min_bemf_counts_down) {
+							zcfound = 1;
+							zcfoundroutine();
+						}
+					}
+				}
 			}
-			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
 				stepper_sine = 1;
 				if (interupt_enabled) {
 					maskPhaseInterrupts();
@@ -1457,7 +1475,7 @@ int main(void)
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
 				
-				 if (input > sine_mode_changeover && sin_cycle_complete >= 2)
+				 if (input > sine_mode_changeover && sin_cycle_complete >= 3)
 					SwitchOver();
 				else
 					delayMicros(step_delay);
