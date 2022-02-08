@@ -640,16 +640,6 @@ void interruptRoutine(){
 	COM_TIMER->DIER |= (0x1UL << (0U));             // enable COM_TIMER interrupt
 }
 
-void startMotor() {
-	if (running == 0){
-		commutate();
-		commutation_interval = 10000;
-		INTERVAL_TIMER->CNT = 5000;
-		running = 1;
-	}
-	enableCompInterrupts();
-}
-
 void tenKhzRoutine(){
 	consumption_timer++;
 
@@ -711,9 +701,6 @@ void tenKhzRoutine(){
 		if (input >= 127 && armed){
 			if (running == 0){
 				allOff();
-				if(!trap_open_loop){
-					startMotor();
-				}
 				running = 1;
 				last_duty_cycle = minimum_duty_cycle;
 				#ifdef tmotor55
@@ -1412,12 +1399,9 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
-				zcfoundroutine();
-				maskPhaseInterrupts();
-				trap_open_loop = 1;
+			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
 				running = 0;
-				zero_crosses = 0;
+				stepper_sine = 1;
 			}
 		}
 		else{            // stepper sine
