@@ -214,6 +214,7 @@ char inputSet = 0;
 char dshot = 0;
 char servoPwm = 0;
 char step = 1;
+char stall_active = 0;
 
 #ifdef MCU_G071
 char min_wait_time = 8;
