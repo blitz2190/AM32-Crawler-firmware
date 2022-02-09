@@ -580,6 +580,9 @@ void commutate(){
 
 void PeriodElapsedCallback(){
 
+	if (old_routine)
+		return;
+
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
 	
@@ -590,8 +593,7 @@ void PeriodElapsedCallback(){
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
 
-	if (!old_routine)
-		enableCompInterrupts();
+	enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
@@ -628,7 +630,7 @@ void interruptRoutine(){
 	}
 
 	if (stall_counter > 0)
-		stall_counter--;
+		stall_counter = 0;
 
 	old_routine = 0;
 
