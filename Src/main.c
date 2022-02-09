@@ -775,16 +775,37 @@ void tenKhzRoutine(){
 				p_prev_rror = p_error;
 
 				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
-				minimum_duty_cycle = starting_duty_orig + boost;
+
+				if (INTERVAL_TIMER->CNT > 20000) {
+					if ((ramp_up_counter % ramp_up_interval) == 0)
+						stall_boost++;
+
+					ramp_up_counter++;
+					commutation_interval = 10000;
+
+					if (!stall_active) {
+						zero_crosses = 0;
+						old_routine = 1;
+						stall_active = 1;
+					}
+				}
+				else if (stall_boost > 0) {
+					ramp_down_counter++;
+					if ((ramp_down_counter % ramp_down_interval) == 0)
+						stall_boost--;
+				}
+				else {
+					ramp_up_counter = 0;
+					ramp_down_counter = 0;
+				}
+
+				minimum_duty_cycle = starting_duty_orig + boost + stall_boost;
+
 
 				if (minimum_duty_cycle > maximum_duty_orig)
 					minimum_duty_cycle = maximum_duty_orig;
 				else if (minimum_duty_cycle < starting_duty_orig) {
 					minimum_duty_cycle = starting_duty_orig;
-				}
-
-				if (INTERVAL_TIMER->CNT > 25000) {
-					old_routine = 1;
 				}
 			}
 
@@ -1401,7 +1422,7 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 40000 && running == 1){
 				//zcfoundroutine();
 				maskPhaseInterrupts();
 				stepper_sine = 1;
