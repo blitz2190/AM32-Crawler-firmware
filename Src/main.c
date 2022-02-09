@@ -181,6 +181,10 @@ int floating = 2;
 int lowside = 3;
 int signaltimeout = 0;
 int deg_smooth_index = 0;
+int ramp_down_counter = 0;
+int ramp_up_counter = 0;
+int ramp_down_interval = 30;
+int ramp_up_interval = 5;
 int sin_cycle_complete = 0;
 int stall_boost = 0;
 
