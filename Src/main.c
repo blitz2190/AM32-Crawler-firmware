@@ -579,8 +579,6 @@ void commutate(){
 }
 
 void PeriodElapsedCallback(){
-	if (old_routine)
-		return;
 
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
@@ -592,8 +590,8 @@ void PeriodElapsedCallback(){
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
 
-	
-	enableCompInterrupts();
+	if (!old_routine)
+		enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
@@ -760,6 +758,7 @@ void tenKhzRoutine(){
 			phase_B_position = 119;
 			phase_C_position = 239;
 			stepper_sine = 1;
+			stall_counter = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
