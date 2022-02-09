@@ -191,6 +191,7 @@ int ramp_up_counter = 0;
 int ramp_down_interval = 30;
 int ramp_up_interval = 5;
 int sin_cycle_complete = 0;
+int stall_boost = 0;
 
 char maximum_throttle_change_ramp = 1;
 char VOLTAGE_DIVIDER = TARGET_VOLTAGE_DIVIDER;     // 100k upper and 10k lower resistor in divider
