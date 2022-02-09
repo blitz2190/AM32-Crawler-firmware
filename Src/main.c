@@ -209,7 +209,7 @@ char rising = 1;
 char last_inc = 1;
 char stepper_sine = 0;
 char max_sin_inc = 3;
-char old_routine = 0;
+volatile char old_routine = 0;
 char armed = 0;
 char inputSet = 0;
 char dshot = 0;
@@ -579,6 +579,9 @@ void commutate(){
 }
 
 void PeriodElapsedCallback(){
+	if (old_routine)
+		return;
+
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
 	
@@ -589,9 +592,8 @@ void PeriodElapsedCallback(){
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
 
-	if(!old_routine){
-		enableCompInterrupts();     // enable comp interrupt
-	}
+	
+	enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
