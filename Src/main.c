@@ -42,7 +42,7 @@
 //===========================================================================
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 02
+#define VERSION_MINOR 20
 char dir_reversed = 0;
 char brake_on_stop = 1;
 char program_running = 1; //low voltage turns off main loop
@@ -181,6 +181,16 @@ int floating = 2;
 int lowside = 3;
 int signaltimeout = 0;
 int deg_smooth_index = 0;
+int amplitude = 165;
+int default_amplitude = 165;
+int min_amplitude = 115;
+int max_amplitude = 180;
+int stall_counter = 0;
+int ramp_down_counter = 0;
+int ramp_up_counter = 0;
+int ramp_down_interval = 30;
+int ramp_up_interval = 5;
+int sin_cycle_complete = 0;
 
 char maximum_throttle_change_ramp = 1;
 char VOLTAGE_DIVIDER = TARGET_VOLTAGE_DIVIDER;     // 100k upper and 10k lower resistor in divider
@@ -195,11 +205,6 @@ char thermal_protection_active = 0;
 char dshot_telemetry = 0;
 char output = 0;
 char rising = 1;
-char amplitude = 165;//200 gets very hot
-char default_amplitude = 165;
-char min_amplitude = 115;
-char max_amplitude = 180;
-char sin_cycle_complete = 0;
 char last_inc = 1;
 char stepper_sine = 0;
 char max_sin_inc = 3;
@@ -209,6 +214,14 @@ char inputSet = 0;
 char dshot = 0;
 char servoPwm = 0;
 char step = 1;
+
+#ifdef MCU_G071
+char min_wait_time = 8;
+#endif // MCU_G071
+
+#ifdef MCU_F051
+char min_wait_time = 45;
+#endif // MCU_G071
 
 float K_p_duty = 0.03;
 float K_i_duty = 0.0001;
@@ -226,6 +239,8 @@ typedef enum
 
 #define TEMP30_CAL_VALUE ((uint16_t*)((uint32_t)0x1FFFF7B8))
 #define TEMP110_CAL_VALUE ((uint16_t*)((uint32_t)0x1FFFF7C2))
+
+const int battery_levels[3][2] = { {600,840},{900,1270},{1270,1680} };
 
 const float pwmSin[3][360] = {
 {0.866025403784439,
@@ -447,7 +462,7 @@ void loadEEpromSettings(){
 		LOW_VOLTAGE_CUTOFF = 0;
 	}
 
-	low_cell_volt_cutoff = eepromBuffer[28] + 300; // 2.5 to 3.5 volts per cell range
+	low_cell_volt_cutoff = eepromBuffer[28] + 250; // 2.5 to 3.5 volts per cell range
 
 	if(eepromBuffer[29] > 4 && eepromBuffer[29] < 26){            // sine mode changeover 5-25 percent throttle
 		sine_mode_changeover_thottle_level = eepromBuffer[29];
@@ -569,6 +584,9 @@ void PeriodElapsedCallback(){
 	advance = (commutation_interval>>3) * advance_level;   // 60 divde 8 7.5 degree increments
 	waitTime = (commutation_interval >>1)  - advance;
 
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
+
 	if(!old_routine){
 		enableCompInterrupts();     // enable comp interrupt
 	}
@@ -606,10 +624,18 @@ void interruptRoutine(){
 			}
 		}
 	}
+
+	if (stall_counter > 0)
+		stall_counter--;
+
+	old_routine = 0;
+
 	maskPhaseInterrupts();
 	INTERVAL_TIMER->CNT = 0 ;
 
 	waitTime = waitTime >> fast_accel;
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
 
 	COM_TIMER->CNT = 0;
 	COM_TIMER->ARR = waitTime;
@@ -653,13 +679,21 @@ void tenKhzRoutine(){
 					GPIOB->BRR = LL_GPIO_PIN_3;    // turn off red
 					GPIOA->BSRR = LL_GPIO_PIN_15;   // turn on green
 					#endif
-					if(cell_count == 0 && LOW_VOLTAGE_CUTOFF){
-						cell_count = battery_voltage / 370;
-						for (int i = 0 ; i < cell_count; i++){
+					if (cell_count == 0 && LOW_VOLTAGE_CUTOFF) {
+						for (int i = 0; i < 3; i++) {
+							if (battery_voltage >= battery_levels[i][0] && battery_voltage <= battery_levels[i][1]) {
+								cell_count = i + 2;
+								break;
+							}
+						}
+						for (int i = 0; i < cell_count; i++) {
 							playInputTune();
 							delayMillis(100);
 							LL_IWDG_ReloadCounter(IWDG);
 						}
+
+						//eepromBuffer[47] = battery_voltage / 10;
+						//saveEEpromSettings();
 					}
 					else{
 						playInputTune();
@@ -743,6 +777,34 @@ void tenKhzRoutine(){
 				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 				minimum_duty_cycle = starting_duty_orig + boost;
 
+				if (stall_counter > 20000) {
+					if ((ramp_up_counter % ramp_up_interval) == 0)
+						stall_boost++;
+
+					ramp_up_counter++;
+					commutation_interval = 10000;
+
+					if (!stall_active) {
+						zero_crosses = 0;
+						old_routine = 1;
+						stall_active = 1;
+					}
+					else if (stall_counter > 25000) {
+						stepper_sine = 1;
+					}
+				}
+				else if (stall_boost > 0) {
+					ramp_down_counter++;
+					if ((ramp_down_counter % ramp_down_interval) == 0)
+						stall_boost--;
+				}
+				else {
+					ramp_up_counter = 0;
+					ramp_down_counter = 0;
+				}
+				stall_counter++;
+
+
 				if (minimum_duty_cycle > maximum_duty_orig)
 					minimum_duty_cycle = maximum_duty_orig;
 				else if (minimum_duty_cycle < starting_duty_orig) {
@@ -750,31 +812,23 @@ void tenKhzRoutine(){
 				}
 			}
 
-			if(maximum_throttle_change_ramp){
-				if(average_interval > 500){
-					max_duty_cycle_change = 5;
-				}
-				else{
-					max_duty_cycle_change = 10;
-				}
+			
+			if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change){
+				duty_cycle = last_duty_cycle + max_duty_cycle_change;
 
-				if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change){
-					duty_cycle = last_duty_cycle + max_duty_cycle_change;
-
-					if(commutation_interval > 500){
-						fast_accel = 1;
-					}
-					else{
-						fast_accel = 0;
-					}
-				}
-				else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change){
-					duty_cycle = last_duty_cycle - max_duty_cycle_change;
-					fast_accel = 0;
+				if(commutation_interval > 500){
+					fast_accel = 1;
 				}
 				else{
 					fast_accel = 0;
 				}
+			}
+			else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change){
+				duty_cycle = last_duty_cycle - max_duty_cycle_change;
+				fast_accel = 0;
+			}
+			else{
+				fast_accel = 0;
 			}
 		}
 
@@ -910,6 +964,8 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	commutation_interval = (thiszctime + (3*commutation_interval)) / 4;
 	advance = commutation_interval / advancedivisor;
 	waitTime = commutation_interval /2  - advance;
+	if (waitTime < min_wait_time)
+		waitTime = min_wait_time;
 	//	blanktime = commutation_interval / 4;
 	while (INTERVAL_TIMER->CNT - thiszctime < waitTime - advance){
 
@@ -931,11 +987,17 @@ void SwitchOver() {
 	sin_cycle_complete = 0;
 	stepper_sine = 0;
 	running = 1;
-	old_routine = 0;
+	old_routine = 1;
 	prop_brake_active = 0;
 	last_average_interval = average_interval;
 	zero_crosses = 0;
 	prop_brake_active = 0;
+
+	commutation_interval = 9000;
+	average_interval = 9000;
+	last_average_interval = average_interval;
+	//  minimum_duty_cycle = ;
+	INTERVAL_TIMER->CNT = 9000;
 
 	last_duty_cycle = duty_cycle;
 	adjusted_duty_cycle = ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
