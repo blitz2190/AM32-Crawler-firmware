@@ -159,6 +159,7 @@ int step_delay = 100;
 int forward = 1;
 int gate_drive_offset = 60;
 int stuckcounter = 0;
+int stall_counter = 0;
 int k_erpm = 0;
 int bad_count = 0;
 int dshotcommand;
@@ -579,6 +580,10 @@ void commutate(){
 }
 
 void PeriodElapsedCallback(){
+
+	if (old_routine)
+		return;
+
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
 	
@@ -588,9 +593,7 @@ void PeriodElapsedCallback(){
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
 
-	if(!old_routine){
-		enableCompInterrupts();     // enable comp interrupt
-	}
+	enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
@@ -608,6 +611,9 @@ void interruptRoutine(){
 			return;
 		}
 	}
+
+	if (stall_counter > 0)
+		stall_counter--;
 
 	if (old_routine) {
 		zero_crosses++;
@@ -782,7 +788,7 @@ void tenKhzRoutine(){
 
 				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 
-				if (INTERVAL_TIMER->CNT > 20000) {
+				if (stall_counter > 20000) {
 					if ((ramp_up_counter % ramp_up_interval) == 0)
 						stall_boost++;
 
@@ -804,6 +810,7 @@ void tenKhzRoutine(){
 					ramp_up_counter = 0;
 					ramp_down_counter = 0;
 				}
+				stall_counter++;
 
 				minimum_duty_cycle = starting_duty_orig + boost + stall_boost;
 
