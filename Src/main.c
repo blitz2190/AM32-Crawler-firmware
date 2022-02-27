@@ -1049,6 +1049,7 @@ void CalibrateThrottle() {
 	playLearnModeTune();
 	int current_max = newinput;
 	int current_min = newinput;
+	int current_resting = newinput;
 	int last_input = newinput;
 	int timout_counter = 0;
 	char changed = 0;
@@ -1068,8 +1069,10 @@ void CalibrateThrottle() {
 
 		last_input = newinput;
 
-		if (timout_counter >= 5000)
+		if (timout_counter >= 5000) {
 			throttle_learn_active = 0;
+			current_resting = newinput;
+		}
 
 		if (newinput > current_max) {
 			current_max = newinput;
@@ -1247,13 +1250,14 @@ int main(void)
 	UpdateADCInput();
 #endif
 	stuckcounter = 0;
+
+	if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
+		CalibrateThrottle();
+	}
+
 	while (program_running){
 
 		LL_IWDG_ReloadCounter(IWDG);
-
-		if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
-			CalibrateThrottle();
-		}
 
 		adc_counter++;
 		if(adc_counter>100){   // for testing adc and telemetry
@@ -1502,28 +1506,8 @@ int main(void)
 	}
 
 	allOff();
-	maskPhaseInterrupts();
-	delayMillis(1000);		
+	maskPhaseInterrupts();	
 	playPowerDownTune();
-	
-	/*
-	if (LL_PWR_IsActiveFlag_WU()) {
-		LL_PWR_ClearFlag_WU();
-	}
-
-	LL_TIM_DisableCounter(TIM6);
-	LL_TIM_DisableUpdateEvent(TIM6);
-	LL_TIM_DisableAllOutputs(TIM6);
-	LL_TIM_DisableIT_UPDATE(TIM6);
-	LL_IWDG_EnableWriteAccess(IWDG);
-	LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_256);
-	LL_IWDG_SetReloadCounter(IWDG, UINT32_MAX);
-	LL_IWDG_ReloadCounter(IWDG);
-
-	LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
-	LL_SYSTICK_DisableIT();
-	LL_LPM_EnableDeepSleep();
-	*/
 	
 	while (1) {
 		LL_IWDG_ReloadCounter(IWDG);
