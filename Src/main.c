@@ -1090,7 +1090,7 @@ void CalibrateThrottle() {
 	if (changed) {
 		eepromBuffer[23] = (current_min - 750) / 2;
 		eepromBuffer[24] = (current_max - 1750) / 2;
-		eepromBuffer[25] = ((current_min + current_max) / 2) - 1374;
+		eepromBuffer[25] = current_resting - 1374;
 		saveEEpromSettings();
 	}
 
