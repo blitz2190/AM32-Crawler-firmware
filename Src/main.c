@@ -54,6 +54,7 @@ char last_error = 0; //0 = no error, 1 = signal loss/brownout, 2 = thermal shutd
 char drag_brake_strength = 10;		// Drag Brake Power
 char sine_mode_changeover_thottle_level = 5;	// Sine Startup Range
 char sine_mode_changeover_mutliplier = 20;
+char advance_inc = 1;
 short sine_mode_changeover = 5 * 20;
 
 //============================= Servo Settings ==============================
@@ -794,9 +795,9 @@ void tenKhzRoutine(){
 						old_routine = 1;
 						stall_active = 1;
 					}
-					else if (stall_counter > 25000) {
-						stepper_sine = 1;
-					}
+					//else if (stall_counter > 25000) {
+					//	stepper_sine = 1;
+					//}
 				}
 				else if (stall_boost > 0) {
 					ramp_down_counter++;
@@ -882,7 +883,7 @@ void tenKhzRoutine(){
 		if (armed || signaltimeout > 25000) {
 			allOff();
 
-			if (armed) {
+			if (armed && last_error != 1) {
 				last_error = 1;
 				saveEEpromSettings();
 			}
@@ -906,46 +907,54 @@ void tenKhzRoutine(){
 
 void advanceincrement(int input){	
 
-	char inc = map(input, 47, sine_mode_changeover, 1, max_sin_inc);
+	char old_inc = advance_inc;
+	advance_inc = map(input, 47, sine_mode_changeover, 1, max_sin_inc);
+
+	if (getAbsDif(advance_inc, old_inc) > 1) {
+		if (advance_inc > old_inc)
+			advance_inc = old_inc + 1;
+		else
+			advance_inc = old_inc - 1;
+	}
 
 	if (forward){
 		
-		if(phase_A_position < sin_swicthover_angle && phase_A_position + inc >= sin_swicthover_angle)
+		if(phase_A_position < sin_swicthover_angle && phase_A_position + advance_inc >= sin_swicthover_angle)
 			sin_cycle_complete = 1;
 		
-		phase_A_position += inc;
+		phase_A_position += advance_inc;
 
 		if (phase_A_position > 359){
 			phase_A_position -= 360;
 			
 		}
 
-		phase_B_position += inc;
+		phase_B_position += advance_inc;
 		if (phase_B_position > 359){
 			phase_B_position -= 360;
 		}
 
-		phase_C_position += inc;
+		phase_C_position += advance_inc;
 		if (phase_C_position > 359){
 			phase_C_position -= 360;
 		}
 	}
 	else{
 
-		if (phase_A_position > sin_swicthover_angle&& phase_A_position - inc <= sin_swicthover_angle)
+		if (phase_A_position > sin_swicthover_angle&& phase_A_position - advance_inc <= sin_swicthover_angle)
 			sin_cycle_complete = 1;
 
-		phase_A_position -= inc;
+		phase_A_position -= advance_inc;
 		if (phase_A_position < 0){
 			phase_A_position += 360;
 		}
 
-		phase_B_position -= inc;
+		phase_B_position -= advance_inc;
 		if (phase_B_position < 0){
 			phase_B_position += 360;
 		}
 
-		phase_C_position -= inc;
+		phase_C_position -= advance_inc;
 		if (phase_C_position < 0){
 			phase_C_position += 360;
 		}
@@ -1283,15 +1292,17 @@ int main(void)
 			if(LOW_VOLTAGE_CUTOFF){
 				if(battery_voltage < (cell_count * low_cell_volt_cutoff)){
 					low_voltage_count++;
-					if(low_voltage_count > 1000){
+					if(low_voltage_count > 2000){
 						input = 0;
 						allOff();
 						maskPhaseInterrupts();
 						running = 0;
 						zero_input_count = 0;
 						armed = 0;
-						last_error = 3;
-						saveEEpromSettings();
+						if (last_error != 3) {
+							last_error = 3;
+							saveEEpromSettings();
+						}
 						program_running = 0;
 					}
 				}
@@ -1323,8 +1334,9 @@ int main(void)
 				}
 
 				playThermalWarningTune();
-				LL_IWDG_ReloadCounter(IWDG);
+				signaltimeout = 0;
 				delayMillis(100);
+				LL_IWDG_ReloadCounter(IWDG);
 			}
 
 			duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
@@ -1504,12 +1516,15 @@ int main(void)
 			}	 			
 		}
 	}
-
+	LL_IWDG_ReloadCounter(IWDG);
 	allOff();
 	maskPhaseInterrupts();	
 	playPowerDownTune();
 	
 	while (1) {
+		delayMillis(200);
+		stuckcounter = 0;
+		signaltimeout = 0;
 		LL_IWDG_ReloadCounter(IWDG);
 	};
 }

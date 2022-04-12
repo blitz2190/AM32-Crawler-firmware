@@ -144,10 +144,12 @@ void playPowerDownTune() {
 	TIM1->PSC = 25;        // frequency of beep
 	delayMillis(200);         // duration of beep
 	comStep(5);
-
+	LL_IWDG_ReloadCounter(IWDG);
+	signaltimeout = 0;
 	TIM1->PSC = 40;            // next beep is higher frequency
 	delayMillis(200);
-
+	LL_IWDG_ReloadCounter(IWDG);
+	signaltimeout = 0;
 	comStep(6);
 	TIM1->PSC = 50;         // higher again..
 	delayMillis(200);
@@ -167,10 +169,11 @@ void playThermalWarningTune() {
 	TIM1->PSC = 25;       
 	delayMillis(200);        
 	comStep(5);
-
+	LL_IWDG_ReloadCounter(IWDG);
 	TIM1->PSC = 25;          
 	delayMillis(200);
-
+	LL_IWDG_ReloadCounter(IWDG);
+	signaltimeout = 0;
 	comStep(6);
 	TIM1->PSC = 25;         
 	delayMillis(200);
