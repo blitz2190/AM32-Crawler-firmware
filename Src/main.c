@@ -1206,6 +1206,7 @@ int main(void)
 			eepromBuffer[5+i] = firmware_info.device_name[i];
 		}
 		saveEEpromSettings();
+		loadEEpromSettings();
 	}
 
 	if (dir_reversed == 1){
