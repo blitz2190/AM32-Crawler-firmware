@@ -795,9 +795,9 @@ void tenKhzRoutine(){
 						old_routine = 1;
 						stall_active = 1;
 					}
-					//else if (stall_counter > 25000) {
-					//	stepper_sine = 1;
-					//}
+					else if (stall_counter > 25000) {
+						stepper_sine = 1;
+					}
 				}
 				else if (stall_boost > 0) {
 					ramp_down_counter++;
@@ -1485,7 +1485,7 @@ int main(void)
 				if (input > sine_mode_changeover * 2) {
 					PunchStart();
 				}
-				else if (input > sine_mode_changeover && sin_cycle_complete == 1){
+				else if (input > sine_mode_changeover && sin_cycle_complete == 3){
 					duty_cycle = starting_duty_orig;
 					SwitchOver();
 				}
