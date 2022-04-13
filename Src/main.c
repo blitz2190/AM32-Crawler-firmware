@@ -42,7 +42,7 @@
 //===========================================================================
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 20
+#define VERSION_MINOR 25
 char dir_reversed = 0;
 char brake_on_stop = 1;
 char program_running = 1; //low voltage turns off main loop
@@ -54,6 +54,9 @@ char last_error = 0; //0 = no error, 1 = signal loss/brownout, 2 = thermal shutd
 char drag_brake_strength = 10;		// Drag Brake Power
 char sine_mode_changeover_mutliplier = 20;
 char advance_inc = 1;
+char num_rotations = 2;
+char sine_rotations_per_rotation = 20;
+char sine_rotations_per_rotation_fast = 10;
 short sine_mode_changeover = 5 * 20;
 
 //============================= Servo Settings ==============================
@@ -468,7 +471,8 @@ void loadEEpromSettings(){
 
 	
 	sine_mode_changeover = map(18, 5, 25, ((TIM1_AUTORELOAD + 1) / 100) * 5, ((TIM1_AUTORELOAD + 1) / 100) * 25);
-	
+	sine_rotations_per_rotation = ceil((eepromBuffer[29] / 2) * num_rotations);
+	sine_rotations_per_rotation_fast = ceil((eepromBuffer[29] / 2) * (num_rotations / 2));
 
 	if(eepromBuffer[30] > 0 && eepromBuffer[30] < 11){        // drag brake 0-10
 		drag_brake_strength = eepromBuffer[30];
@@ -1185,6 +1189,17 @@ int main(void)
 	loadEEpromSettings();
 	//  EEPROM_VERSION = *(uint8_t*)(0x08000FFC);
 	if(firmware_info.version_major != eepromBuffer[3] || firmware_info.version_minor != eepromBuffer[4]){
+		
+		char same_device_name = 1;
+
+		for (int i = 0; i < 12; i++) {
+			if (eepromBuffer[5 + i] != firmware_info.device_name[i])
+				same_device_name = 0;
+		}
+
+		if (same_device_name != 1 || (eepromBuffer[3] <= 1 && eepromBuffer[4] < 25))
+			eepromBuffer[29] = 14;
+		
 		eepromBuffer[3] = firmware_info.version_major;
 		eepromBuffer[4] = firmware_info.version_minor;
 		for(int i = 0; i < 12 ; i ++){
@@ -1462,7 +1477,8 @@ int main(void)
 				advanceincrement(input);
 				step_delay = map (input, 48, sine_mode_changeover, 300, 25);
 				
-				if ((input > sine_mode_changeover && sin_cycle_complete >= 2) || (input > sine_mode_changeover * 2 && sin_cycle_complete >= 1)){
+				if ((input > sine_mode_changeover && sin_cycle_complete >= sine_rotations_per_rotation) 
+					|| (input > sine_mode_changeover * 2 && sin_cycle_complete >= sine_rotations_per_rotation_fast)){
 					duty_cycle = starting_duty_orig;
 					SwitchOver();
 				}
