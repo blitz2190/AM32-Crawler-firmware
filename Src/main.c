@@ -918,7 +918,7 @@ void advanceincrement(int input){
 	if (forward){
 		
 		if(phase_A_position < sin_swicthover_angle && phase_A_position + advance_inc >= sin_swicthover_angle)
-			sin_cycle_complete = 1;
+			sin_cycle_complete++;
 		
 		phase_A_position += advance_inc;
 
@@ -940,7 +940,7 @@ void advanceincrement(int input){
 	else{
 
 		if (phase_A_position > sin_swicthover_angle&& phase_A_position - advance_inc <= sin_swicthover_angle)
-			sin_cycle_complete = 1;
+			sin_cycle_complete++;
 
 		phase_A_position -= advance_inc;
 		if (phase_A_position < 0){
@@ -1024,23 +1024,6 @@ void SwitchOver() {
 	enableCompInterrupts();
 }
 
-void PunchStart() { //old switchover code, good for a fast accel punch
-	stepper_sine = 0;
-	running = 1;
-	old_routine = 1;
-	commutation_interval = 9000;
-	average_interval = 9000;
-	last_average_interval = average_interval;
-	//  minimum_duty_cycle = ;
-	INTERVAL_TIMER->CNT = 9000;
-	zero_crosses = 0;
-	prop_brake_active = 0;
-	step = changeover_step;                    // rising bemf on a same as position 0.
-	comStep(step);// rising bemf on a same as position 0.
-	LL_TIM_GenerateEvent_UPDATE(TIM1);
-	zcfoundroutine();
-}
-
 void UpdateADCInput() {
 	signaltimeout = 0;
 	ADC_smoothed_input = (((10 * ADC_smoothed_input) + ADC_raw_input) / 11);
@@ -1049,7 +1032,6 @@ void UpdateADCInput() {
 		newinput = 2000;
 	}
 }
-
 
 void CalibrateThrottle() {
 	allOff();
@@ -1478,12 +1460,9 @@ int main(void)
 				maskPhaseInterrupts();
 				allpwm();
 				advanceincrement(input);
-				step_delay = map (input, 48, sine_mode_changeover, 300, 20);
+				step_delay = map (input, 48, sine_mode_changeover, 300, 25);
 				
-				if (input > sine_mode_changeover * 2) {
-					PunchStart();
-				}
-				else if (input > sine_mode_changeover && sin_cycle_complete == 3){
+				if ((input > sine_mode_changeover && sin_cycle_complete >= 2) || (input > sine_mode_changeover * 2 && sin_cycle_complete >= 1)){
 					duty_cycle = starting_duty_orig;
 					SwitchOver();
 				}
