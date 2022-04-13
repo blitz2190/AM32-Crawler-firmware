@@ -52,7 +52,6 @@ char brushed_direction_set = 0;
 char advance_level = 0;
 char last_error = 0; //0 = no error, 1 = signal loss/brownout, 2 = thermal shutdown, 3 = voltage too low
 char drag_brake_strength = 10;		// Drag Brake Power
-char sine_mode_changeover_thottle_level = 5;	// Sine Startup Range
 char sine_mode_changeover_mutliplier = 20;
 char advance_inc = 1;
 short sine_mode_changeover = 5 * 20;
@@ -467,10 +466,9 @@ void loadEEpromSettings(){
 
 	low_cell_volt_cutoff = eepromBuffer[28] + 250; // 2.5 to 3.5 volts per cell range
 
-	if(eepromBuffer[29] > 4 && eepromBuffer[29] < 26){            // sine mode changeover 5-25 percent throttle
-		sine_mode_changeover_thottle_level = eepromBuffer[29];
-		sine_mode_changeover = map(sine_mode_changeover_thottle_level, 5, 25, ((TIM1_AUTORELOAD + 1) / 100) * 5, ((TIM1_AUTORELOAD + 1) / 100) * 25);
-	}
+	
+	sine_mode_changeover = map(18, 5, 25, ((TIM1_AUTORELOAD + 1) / 100) * 5, ((TIM1_AUTORELOAD + 1) / 100) * 25);
+	
 
 	if(eepromBuffer[30] > 0 && eepromBuffer[30] < 11){        // drag brake 0-10
 		drag_brake_strength = eepromBuffer[30];
