@@ -615,6 +615,9 @@ void interruptRoutine(){
 		}
 	}
 
+	if (old_routine)
+		return;
+
 	thiszctime = INTERVAL_TIMER->CNT;
 
 	if (rising){
@@ -634,8 +637,6 @@ void interruptRoutine(){
 
 	if (stall_counter > 0)
 		stall_counter = 0;
-
-	old_routine = 0;
 
 	maskPhaseInterrupts();
 	INTERVAL_TIMER->CNT = 0 ;
