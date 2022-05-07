@@ -218,6 +218,7 @@ char dshot = 0;
 char servoPwm = 0;
 char step = 1;
 char stall_active = 0;
+char play_tone_flag = 0;
 
 #ifdef MCU_G071
 char min_wait_time = 8;
@@ -724,6 +725,18 @@ void tenKhzRoutine(){
 		}
 
 		if (input < 47){
+
+			if (play_tone_flag != 0) {
+				if (play_tone_flag == 1) {
+					playDefaultTone();
+				}
+				if (play_tone_flag == 2) {
+					playChangedTone();
+				}
+
+				play_tone_flag = 0;
+			}
+
 			if (!running){
 				duty_cycle = 0;
 				open_loop_routine = 1;
