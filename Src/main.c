@@ -733,10 +733,8 @@ void tenKhzRoutine(){
 				open_loop_routine = 1;
 				zero_crosses = 0;
 				bad_count = 0;
-				if(!brake_on_stop){		  
+				if(!brake_on_stop)	  
 					allOff();
-					duty_cycle = 0;
-				}
 			}
 			phase_A_position = 0;
 			phase_B_position = 119;
@@ -755,10 +753,7 @@ void tenKhzRoutine(){
 		}
 		else if (old_forward != forward) {
 			old_forward = forward;
-			phase_A_position = 0;
-			phase_B_position = 119;
-			phase_C_position = 239;
-			stepper_sine = 1;
+			open_loop_routine = 1;
 			stall_counter = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
@@ -985,7 +980,7 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 	}
 	
 	if (zero_crosses >= 100 && commutation_interval <= 2000) {
-		enableCompInterrupts();          // enable interrupt
+		enableCompInterrupts();
 	}
 }
 
@@ -1490,6 +1485,10 @@ int main(void)
 				else {
 					delayMicros(step_delay);
 				}
+
+				if (sin_cycle_complete >= sine_rotations_per_rotation)
+					sin_cycle_complete = 0;
+
 			}
 			else{
 				if(brake_on_stop){
