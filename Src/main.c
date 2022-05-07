@@ -220,7 +220,6 @@ char servoPwm = 0;
 char step = 1;
 char stall_active = 0;
 char play_tone_flag = 0;
-char dir_changed = 0;
 
 #ifdef MCU_G071
 char min_wait_time = 8;
@@ -652,16 +651,6 @@ void interruptRoutine(){
 	COM_TIMER->DIER |= (0x1UL << (0U));             // enable COM_TIMER interrupt
 }
 
-void startMotor() {
-	if (running == 0){
-		commutate();
-		commutation_interval = 10000;
-		INTERVAL_TIMER->CNT = 5000;
-		running = 1;
-	}
-	enableCompInterrupts();
-}
-
 void tenKhzRoutine(){
 	consumption_timer++;
 
@@ -726,7 +715,7 @@ void tenKhzRoutine(){
 			prop_brake_active = 0;
 		}
 
-		if (input < 47 || dir_changed){
+		if (input < 47){
 
 			if (play_tone_flag != 0) {
 				if (play_tone_flag == 1) {
@@ -749,7 +738,6 @@ void tenKhzRoutine(){
 					duty_cycle = 0;
 				}
 			}
-			dir_changed = 0;
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
@@ -761,6 +749,15 @@ void tenKhzRoutine(){
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
+			stepper_sine = 1;
+			stall_counter = 0;
+			minimum_duty_cycle = starting_duty_orig;
+		}
+		else if (old_forward != forward) {
+			old_forward = forward;
+			phase_A_position = 0;
+			phase_B_position = 119;
+			phase_C_position = 239;
 			stepper_sine = 1;
 			stall_counter = 0;
 			minimum_duty_cycle = starting_duty_orig;
@@ -1392,11 +1389,6 @@ int main(void)
 		else if (newinput >= (1000 - (servo_dead_band << 1)) && newinput <= (1000 + (servo_dead_band <<1))) {
 			adjusted_input = 0;
 		}
-
-		if (forward != old_forward)
-			dir_changed = 1;
-
-		old_forward = forward;
 	  	  	
 		if(adjusted_input < 47){           // dead band ?
 			input= 0;
