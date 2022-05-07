@@ -583,9 +583,6 @@ void commutate(){
 
 void PeriodElapsedCallback(){
 
-	if (old_routine)
-		return;
-
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
 	
@@ -595,13 +592,13 @@ void PeriodElapsedCallback(){
 
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
-
-	enableCompInterrupts();
+	
+	if (!old_routine)
+		enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
 	}
-	//	UTILITY_TIMER->CNT = 0;
 }
 
 
@@ -614,9 +611,6 @@ void interruptRoutine(){
 			return;
 		}
 	}
-
-	if (old_routine)
-		return;
 
 	thiszctime = INTERVAL_TIMER->CNT;
 
@@ -1026,7 +1020,7 @@ void SwitchOver() {
 	step = changeover_step;
 	comStep(step);
 	changeCompInput();
-	enableCompInterrupts();
+	//enableCompInterrupts();
 }
 
 void UpdateADCInput() {
