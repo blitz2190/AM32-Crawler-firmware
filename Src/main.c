@@ -709,7 +709,7 @@ void tenKhzRoutine(){
 	}
 
 	if(!stepper_sine && BRUSHED_MODE == 0){
-		if (input >= sine_mode_changeover && armed){
+		if (input >= 127 && armed){
 			
 			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
 			prop_brake_active = 0;
