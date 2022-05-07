@@ -212,7 +212,7 @@ char rising = 1;
 char last_inc = 1;
 char stepper_sine = 0;
 char max_sin_inc = 3;
-volatile char old_routine = 0;
+volatile char open_loop_routine = 0;
 char armed = 0;
 char inputSet = 0;
 char dshot = 0;
@@ -635,7 +635,7 @@ void interruptRoutine(){
 	if (stall_counter > 0)
 		stall_counter = 0;
 
-	old_routine = 0;
+	open_loop_routine = 0;
 
 	maskPhaseInterrupts();
 	INTERVAL_TIMER->CNT = 0 ;
