@@ -1359,6 +1359,7 @@ int main(void)
 				delayMillis(10);
 				stuckcounter = 0;
 				signaltimeout = 0;
+				zero_input_count = 0;
 				LL_IWDG_ReloadCounter(IWDG);
 				enter_learn_countdown--;
 			}
