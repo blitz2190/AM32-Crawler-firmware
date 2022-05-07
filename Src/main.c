@@ -201,7 +201,6 @@ char VOLTAGE_DIVIDER = TARGET_VOLTAGE_DIVIDER;     // 100k upper and 10k lower r
 char cell_count = 0;
 char reversing_dead_band = 1;
 char fast_accel = 1;
-char play_tone_flag = 0;
 char desync_check = 0;
 char low_kv_filter_level = 20;
 char prop_brake_active = 0;
@@ -210,7 +209,7 @@ char dshot_telemetry = 0;
 char output = 0;
 char rising = 1;
 char last_inc = 1;
-char stepper_sine = 0;
+char stepper_sine = 1;
 char max_sin_inc = 3;
 volatile char open_loop_routine = 0;
 char armed = 0;
@@ -713,42 +712,18 @@ void tenKhzRoutine(){
 			}
 		}
 		else{
-			armed_timeout_count =0;
+			armed_timeout_count = 0;
 		}
 	}
 
 	if(!stepper_sine && BRUSHED_MODE == 0){
-		if (input >= 127 && armed){
-			if (running == 0){
-				allOff();
-				if(!open_loop_routine){
-					startMotor();
-				}
-				running = 1;
-				last_duty_cycle = minimum_duty_cycle;
-				#ifdef tmotor55
-				GPIOB->BRR = LL_GPIO_PIN_3;  // off red
-				GPIOA->BRR = LL_GPIO_PIN_15; // off green
-				GPIOB->BSRR = LL_GPIO_PIN_5;  // on blue
-				#endif
-			}
+		if (input >= sine_mode_changeover && armed){
 			
 			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
 			prop_brake_active = 0;
 		}
 
 		if (input < 47){
-			if(play_tone_flag != 0){
-				if(play_tone_flag == 1){
-					playDefaultTone();
-				}
-				if(play_tone_flag == 2){
-					playChangedTone();
-				}
-
-				play_tone_flag = 0;
-			}
-
 			if (!running){
 				duty_cycle = 0;
 				open_loop_routine = 1;
@@ -771,6 +746,7 @@ void tenKhzRoutine(){
 			phase_B_position = 180;
 			phase_C_position = 300;
 			stepper_sine = 1;
+			stall_counter = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
 
@@ -881,7 +857,7 @@ void tenKhzRoutine(){
 
 	
 	signaltimeout++;
-	if (signaltimeout > 10000) { // quarter second timeout when armed half second for servo;
+	if (signaltimeout > 10000) {
 		if (armed || signaltimeout > 25000) {
 			allOff();
 
@@ -1461,7 +1437,7 @@ int main(void)
 
 			/**************** old routine*********************/
 			if (open_loop_routine && running){
-				maskPhaseInterrupts();
+				//maskPhaseInterrupts();
 				getBemfState();
 				if (!zcfound){
 					if (rising){
