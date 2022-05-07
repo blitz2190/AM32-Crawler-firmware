@@ -160,6 +160,7 @@ int phase_B_position = 119;
 int phase_C_position = 239;
 int step_delay = 100;
 int forward = 1;
+int old_forward = 1;
 int gate_drive_offset = 60;
 int stuckcounter = 0;
 int k_erpm = 0;
@@ -219,6 +220,7 @@ char servoPwm = 0;
 char step = 1;
 char stall_active = 0;
 char play_tone_flag = 0;
+char dir_changed = 0;
 
 #ifdef MCU_G071
 char min_wait_time = 8;
@@ -724,7 +726,7 @@ void tenKhzRoutine(){
 			prop_brake_active = 0;
 		}
 
-		if (input < 47){
+		if (input < 47 || dir_changed){
 
 			if (play_tone_flag != 0) {
 				if (play_tone_flag == 1) {
@@ -747,6 +749,7 @@ void tenKhzRoutine(){
 					duty_cycle = 0;
 				}
 			}
+			dir_changed = 0;
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
@@ -1200,10 +1203,10 @@ int main(void)
 	}
 
 	if (dir_reversed == 1){
-		forward = 0;
+		old_forward = forward = 0;
 	}
 	else{
-		forward = 1;
+		old_forward = forward = 1;
 	}
 
 	tim1_arr = TIMER1_MAX_ARR;
@@ -1389,6 +1392,13 @@ int main(void)
 		else if (newinput >= (1000 - (servo_dead_band << 1)) && newinput <= (1000 + (servo_dead_band <<1))) {
 			adjusted_input = 0;
 		}
+
+		if (forward != old_forward)
+			dir_changed = 1;
+		else
+			dir_changed = 0;
+
+		old_forward = forward;
 	  	  	
 		if(adjusted_input < 47){           // dead band ?
 			input= 0;
