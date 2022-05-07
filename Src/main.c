@@ -574,7 +574,7 @@ void commutate(){
 	changeCompInput();
 
 	if(average_interval > 2000){
-		old_routine = 1;
+		open_loop_routine = 1;
 	}
 
 	bemfcounter = 0;
@@ -583,7 +583,7 @@ void commutate(){
 
 void PeriodElapsedCallback(){
 
-	if (old_routine)
+	if (open_loop_routine)
 		return;
 
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
@@ -721,7 +721,7 @@ void tenKhzRoutine(){
 		if (input >= 127 && armed){
 			if (running == 0){
 				allOff();
-				if(!old_routine){
+				if(!open_loop_routine){
 					startMotor();
 				}
 				running = 1;
@@ -751,7 +751,7 @@ void tenKhzRoutine(){
 
 			if (!running){
 				duty_cycle = 0;
-				old_routine = 1;
+				open_loop_routine = 1;
 				zero_crosses = 0;
 				bad_count = 0;
 				if(!brake_on_stop){		  
@@ -794,7 +794,7 @@ void tenKhzRoutine(){
 
 					if (!stall_active) {
 						zero_crosses = 0;
-						old_routine = 1;
+						open_loop_routine = 1;
 						stall_active = 1;
 					}
 					else if (stall_counter > 25000) {
@@ -987,7 +987,7 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 
 	}
 
-	if (old_routine) {
+	if(open_loop_routine){
 		commutate();
 		bemfcounter = 0;
 		bad_count = 0;
@@ -1004,7 +1004,7 @@ void SwitchOver() {
 	sin_cycle_complete = 0;
 	stepper_sine = 0;
 	running = 1;
-	old_routine = 1;
+	open_loop_routine = 1;
 	prop_brake_active = 0;
 	last_average_interval = average_interval;
 	zero_crosses = 0;
@@ -1374,7 +1374,7 @@ int main(void)
 				if(commutation_interval > 1500 || stepper_sine){
 					forward = 1 - dir_reversed;
 					zero_crosses = 0;
-					old_routine = 1;
+					open_loop_routine = 1;
 					maskPhaseInterrupts();
 				}
 				else{
@@ -1387,7 +1387,7 @@ int main(void)
 			if (forward == (1 - dir_reversed)) {
 				if(commutation_interval > 1500 || stepper_sine){
 					zero_crosses = 0;
-					old_routine = 1;
+					open_loop_routine = 1;
 					forward = dir_reversed;
 					maskPhaseInterrupts();
 				}
@@ -1460,7 +1460,7 @@ int main(void)
 			}
 
 			/**************** old routine*********************/
-			if (old_routine && running){
+			if (open_loop_routine && running){
 				maskPhaseInterrupts();
 				getBemfState();
 				if (!zcfound){
@@ -1481,7 +1481,7 @@ int main(void)
 			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
 				zcfoundroutine();
 				maskPhaseInterrupts();
-				old_routine = 1;
+				open_loop_routine = 1;
 				running = 0;
 				zero_crosses = 0;
 			}
