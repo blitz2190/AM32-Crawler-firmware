@@ -583,6 +583,9 @@ void commutate(){
 
 void PeriodElapsedCallback(){
 
+	if (old_routine)
+		return;
+
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
 	commutation_interval = (( 3*commutation_interval) + thiszctime)>>2;
 	
@@ -592,13 +595,13 @@ void PeriodElapsedCallback(){
 
 	if (waitTime < min_wait_time)
 		waitTime = min_wait_time;
-	
-	if (!old_routine)
-		enableCompInterrupts();
+
+	enableCompInterrupts();
 
 	if(zero_crosses<10000){
 		zero_crosses++;
 	}
+	//	UTILITY_TIMER->CNT = 0;
 }
 
 
@@ -631,6 +634,8 @@ void interruptRoutine(){
 
 	if (stall_counter > 0)
 		stall_counter = 0;
+
+	old_routine = 0;
 
 	maskPhaseInterrupts();
 	INTERVAL_TIMER->CNT = 0 ;
@@ -982,14 +987,15 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 
 	}
 
-	commutate();
-	bemfcounter = 0;
-	bad_count = 0;
+	if (old_routine) {
+		commutate();
+		bemfcounter = 0;
+		bad_count = 0;
 
-	zero_crosses++;
+		zero_crosses++;
+	}
 	
 	if (zero_crosses >= 100 && commutation_interval <= 2000) {
-		old_routine = 0;
 		enableCompInterrupts();          // enable interrupt
 	}
 }
