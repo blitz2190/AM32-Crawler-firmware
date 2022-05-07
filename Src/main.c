@@ -1395,8 +1395,6 @@ int main(void)
 
 		if (forward != old_forward)
 			dir_changed = 1;
-		else
-			dir_changed = 0;
 
 		old_forward = forward;
 	  	  	
