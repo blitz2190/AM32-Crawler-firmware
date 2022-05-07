@@ -1063,7 +1063,7 @@ void CalibrateThrottle() {
 
 		last_input = newinput;
 
-		if (timout_counter >= 5000) {
+		if (timout_counter >= 3000) {
 			throttle_learn_active = 0;
 			current_resting = newinput;
 		}
@@ -1257,10 +1257,6 @@ int main(void)
 #endif
 	stuckcounter = 0;
 
-	if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
-		CalibrateThrottle();
-	}
-
 	while (program_running){
 
 		LL_IWDG_ReloadCounter(IWDG);
@@ -1354,6 +1350,23 @@ int main(void)
 		UpdateADCInput();		
 		#endif
 		stuckcounter = 0;
+
+		if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
+			playLearnModeTune();
+
+			char enter_learn_countdown = 200;
+			while (enter_learn_countdown > 0) {
+				delayMillis(10);
+				stuckcounter = 0;
+				signaltimeout = 0;
+				LL_IWDG_ReloadCounter(IWDG);
+				enter_learn_countdown--;
+			}
+
+			if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
+				CalibrateThrottle();
+			}
+		}
 
 		if (newinput > (1000 + (servo_dead_band<<1))) {
 			if (forward == dir_reversed) {
