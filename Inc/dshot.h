@@ -14,8 +14,8 @@
 
 
 
-void computeDshotDMA(void);
-void make_dshot_package();
+//void computeDshotDMA(void);
+//void make_dshot_package();
 
 extern void playInputTune(void);
 extern void playInputTune2(void);

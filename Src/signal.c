@@ -68,8 +68,8 @@ void transfercomplete(){
 	    }else{
 
 			sendDshotDma();
-			make_dshot_package();
-			computeDshotDMA();
+			//make_dshot_package();
+			//computeDshotDMA();
 	    return;
 	    }
 	}
@@ -87,8 +87,8 @@ void transfercomplete(){
 if(dshot_telemetry){
     if(out_put){
 //    	TIM17->CNT = 0;
-    	make_dshot_package();          // this takes around 10us !!
-  	computeDshotDMA();             //this is slow too..
+    	//make_dshot_package();          // this takes around 10us !!
+  	//computeDshotDMA();             //this is slow too..
   	receiveDshotDma();             //holy smokes.. reverse the line and set up dma again
    	return;
     }else{
@@ -98,7 +98,7 @@ if(dshot_telemetry){
 }else{
 
 		if (dshot == 1){
-			computeDshotDMA();
+			//computeDshotDMA();
 			
 			receiveDshotDma();
 		}
