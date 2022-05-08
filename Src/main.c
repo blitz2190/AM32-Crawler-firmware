@@ -724,7 +724,7 @@ void tenKhzRoutine(){
 			
 			if (running == 0) {
 				allOff();
-				if (!old_routine) {
+				if (!open_loop_routine) {
 					startMotor();
 				}
 				running = 1;
