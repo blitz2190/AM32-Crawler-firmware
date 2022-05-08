@@ -995,7 +995,6 @@ void SwitchOver() {
 	prop_brake_active = 0;
 	last_average_interval = average_interval;
 	zero_crosses = 0;
-	prop_brake_active = 0;
 
 	commutation_interval = 9000;
 	average_interval = 9000;
@@ -1475,6 +1474,12 @@ int main(void)
 		}
 		else{            // stepper sine
 			if(input >= 47 && armed){
+
+				if (input > sine_mode_changeover * 3) {
+					SwitchOver();
+					continue;
+				}
+
 				maskPhaseInterrupts();
 				allpwm();
 				advanceincrement(input);
