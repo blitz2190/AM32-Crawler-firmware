@@ -147,7 +147,8 @@ int adc_counter = 0;
 int e_com_time = 0;
 int dshot_frametime = 0;
 int changeover_step = 1;
-int sin_swicthover_angle = 240;
+int sin_swicthover_angle_forward = 240;
+int sin_swicthover_angle_reverse = 330;
 int filter_level = 5;
 int running = 0;
 int advance = 0;
@@ -736,6 +737,7 @@ void tenKhzRoutine(){
 				if(!brake_on_stop)	  
 					allOff();
 			}
+			old_forward = forward
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
@@ -744,6 +746,7 @@ void tenKhzRoutine(){
 			minimum_duty_cycle = starting_duty_orig;
 		}
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
+			old_forward = forward
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
@@ -905,7 +908,7 @@ void advanceincrement(int input){
 
 	if (forward){
 		
-		if(phase_A_position < sin_swicthover_angle && phase_A_position + advance_inc >= sin_swicthover_angle)
+		if(phase_A_position < sin_swicthover_angle_forward && phase_A_position + advance_inc >= sin_swicthover_angle_forward)
 			sin_cycle_complete++;
 		
 		phase_A_position += advance_inc;
@@ -927,7 +930,7 @@ void advanceincrement(int input){
 	}
 	else{
 
-		if (phase_A_position > sin_swicthover_angle&& phase_A_position - advance_inc <= sin_swicthover_angle)
+		if (phase_A_position > sin_swicthover_angle_reverse && phase_A_position - advance_inc <= sin_swicthover_angle_reverse)
 			sin_cycle_complete++;
 
 		phase_A_position -= advance_inc;
