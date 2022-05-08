@@ -5,6 +5,7 @@
  *      Author: Alka
  */
 
+/*
 #include "functions.h"
 #include "dshot.h"
 #include "targets.h"
@@ -233,3 +234,4 @@ for (int i = 15; i >= 9 ; i--){
 
 
 }
+*/

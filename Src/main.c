@@ -166,7 +166,6 @@ int gate_drive_offset = 60;
 int stuckcounter = 0;
 int k_erpm = 0;
 int bad_count = 0;
-int dshotcommand;
 int armed_count_threshold = 1000;
 int zero_input_count = 0;
 int input = 0;
