@@ -584,7 +584,7 @@ void commutate(){
 
 void PeriodElapsedCallback(){
 
-	if (open_loop_routine)
+	if (open_loop_routine || running == 0)
 		return;
 
 	COM_TIMER->DIER &= ~((0x1UL << (0U)));             // disable interrupt
