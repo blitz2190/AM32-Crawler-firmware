@@ -737,7 +737,7 @@ void tenKhzRoutine(){
 				if(!brake_on_stop)	  
 					allOff();
 			}
-			old_forward = forward
+			old_forward = forward;
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
@@ -746,7 +746,7 @@ void tenKhzRoutine(){
 			minimum_duty_cycle = starting_duty_orig;
 		}
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
-			old_forward = forward
+			old_forward = forward;
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
