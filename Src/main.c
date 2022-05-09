@@ -25,6 +25,7 @@
 */
 #include <stdint.h>
 #include "main.h"
+#include <math.h>
 #include "targets.h"
 #include "signal.h"
 #include "dshot.h"
@@ -674,8 +675,88 @@ void tenKhzRoutine(){
 		return;
 	}
 
-	if (thermal_protection_active || throttle_learn_active)
-		return;
+	adc_counter++;
+	if (adc_counter > 100) {   // for testing adc and telemetry
+		ADC_raw_temp = ADC_raw_temp - (temperature_offset);
+		converted_degrees = __LL_ADC_CALC_TEMPERATURE(3300, ADC_raw_temp, LL_ADC_RESOLUTION_12B);
+		//degrees_celsius =((7 * degrees_celsius) + converted_degrees) >> 3;
+
+		deg_smooth_total -= deg_smooth_reading[deg_smooth_index];
+		deg_smooth_reading[deg_smooth_index] = ((7 * degrees_celsius) + converted_degrees) >> 3;
+		deg_smooth_total += deg_smooth_reading[deg_smooth_index];
+
+		deg_smooth_index++;
+		if (deg_smooth_index >= 10)
+			deg_smooth_index = 0;
+
+		degrees_celsius = deg_smooth_total / 10;
+
+		battery_voltage = ((7 * battery_voltage) + ((ADC_raw_volts * 3300 / 4095 * VOLTAGE_DIVIDER) / 100)) >> 3;
+		smoothed_raw_current = ((7 * smoothed_raw_current + (ADC_raw_current)) >> 3);
+		actual_current = ((smoothed_raw_current * 3300 / 4095) * MILLIVOLT_PER_AMP) / 10 + CURRENT_OFFSET;
+
+		LL_ADC_REG_StartConversion(ADC1);
+		if (LOW_VOLTAGE_CUTOFF) {
+			if (battery_voltage < (cell_count * low_cell_volt_cutoff)) {
+				low_voltage_count++;
+				if (low_voltage_count > 2000) {
+					input = 0;
+					allOff();
+					maskPhaseInterrupts();
+					running = 0;
+					zero_input_count = 0;
+					armed = 0;
+					if (last_error != 3) {
+						last_error = 3;
+						saveEEpromSettings();
+					}
+					program_running = 0;
+				}
+			}
+			else {
+				low_voltage_count = 0;
+			}
+		}
+		adc_counter = 0;
+
+#ifdef USE_ADC_INPUT
+		if (ADC_raw_input < 10) {
+			zero_input_count++;
+		}
+		else {
+			zero_input_count = 0;
+		}
+#endif
+	}
+
+	if (degrees_celsius >= 115) {
+		if (thermal_protection_active == 0) {
+			allOff();
+			maskPhaseInterrupts();
+			thermal_protection_active = 1;
+
+			if (last_error != 2) {
+				last_error = 2;
+				saveEEpromSettings();
+			}
+
+			playThermalWarningTune();
+			signaltimeout = 0;
+			delayMillis(100);
+			LL_IWDG_ReloadCounter(IWDG);
+		}
+
+		duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
+		adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
+		TIM1->CCR1 = adjusted_duty_cycle;
+		TIM1->CCR2 = adjusted_duty_cycle;
+		TIM1->CCR3 = adjusted_duty_cycle;
+		proportionalBrake();
+		prop_brake_active = 1;
+		continue;
+	}
+	else if (degrees_celsius < 110 && thermal_protection_active)
+		thermal_protection_active = 0;
 
 	if(!armed && inputSet){
 		if(adjusted_input == 0){
@@ -716,155 +797,6 @@ void tenKhzRoutine(){
 		else{
 			armed_timeout_count = 0;
 		}
-	}
-
-	if(!stepper_sine && BRUSHED_MODE == 0){
-		if (input >= sine_mode_changeover && armed){
-			
-			if (running == 0) {
-				allOff();
-				if (!open_loop_routine) {
-					startMotor();
-				}
-				running = 1;
-				last_duty_cycle = minimum_duty_cycle;
-			}
-
-			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
-			prop_brake_active = 0;
-		}
-
-		if (input < 47){
-
-			if (play_tone_flag != 0) {
-				if (play_tone_flag == 1) {
-					playDefaultTone();
-				}
-				if (play_tone_flag == 2) {
-					playChangedTone();
-				}
-
-				play_tone_flag = 0;
-			}
-
-			if (!running){
-				duty_cycle = 0;
-				open_loop_routine = 1;
-				zero_crosses = 0;
-				bad_count = 0;
-				if(!brake_on_stop)	  
-					allOff();
-			}
-			old_forward = forward;
-			phase_A_position = 0;
-			phase_B_position = 119;
-			phase_C_position = 239;
-			stepper_sine = 1;
-			stall_counter = 0;
-			minimum_duty_cycle = starting_duty_orig;
-		}
-		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
-			old_forward = forward;
-			phase_A_position = 60;
-			phase_B_position = 180;
-			phase_C_position = 300;
-			stepper_sine = 1;
-			stall_counter = 0;
-			minimum_duty_cycle = starting_duty_orig;
-		}
-		else if (old_forward != forward) {
-			old_forward = forward;
-			open_loop_routine = 1;
-			stall_counter = 0;
-			zero_crosses = 0;
-			bad_count = 0;
-			minimum_duty_cycle = starting_duty_orig;
-		}
-
-		if(!prop_brake_active){
-
-			if (running){
-				p_error = commutation_interval - minimum_commutation;
-				p_error_integral += (p_error);
-				p_error_derivative = (p_error - p_prev_rror);
-				p_prev_rror = p_error;
-
-				boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
-				minimum_duty_cycle = starting_duty_orig + boost;
-
-				if (stall_counter > 20000) {
-					if ((ramp_up_counter % ramp_up_interval) == 0)
-						stall_boost++;
-
-					ramp_up_counter++;
-					commutation_interval = 10000;
-
-					if (!stall_active) {
-						zero_crosses = 0;
-						open_loop_routine = 1;
-						stall_active = 1;
-					}
-					else if (stall_counter > 25000) {
-						stepper_sine = 1;
-					}
-				}
-				else if (stall_boost > 0) {
-					ramp_down_counter++;
-					if ((ramp_down_counter % ramp_down_interval) == 0)
-						stall_boost--;
-				}
-				else {
-					ramp_up_counter = 0;
-					ramp_down_counter = 0;
-				}
-				stall_counter++;
-
-
-				if (minimum_duty_cycle > maximum_duty_orig)
-					minimum_duty_cycle = maximum_duty_orig;
-				else if (minimum_duty_cycle < starting_duty_orig) {
-					minimum_duty_cycle = starting_duty_orig;
-				}
-			}
-
-			
-			if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change){
-				duty_cycle = last_duty_cycle + max_duty_cycle_change;
-
-				if(commutation_interval > 500){
-					fast_accel = 1;
-				}
-				else{
-					fast_accel = 0;
-				}
-			}
-			else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change){
-				duty_cycle = last_duty_cycle - max_duty_cycle_change;
-				fast_accel = 0;
-			}
-			else{
-				fast_accel = 0;
-			}
-		}
-
-		if (armed && running && (input > 47)){
-			adjusted_duty_cycle = ((duty_cycle * tim1_arr)/TIMER1_MAX_ARR)+1;
-		}
-		else{
-			if(prop_brake_active){
-				adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr)/TIMER1_MAX_ARR)+1;
-			}
-			else{
-				adjusted_duty_cycle = 0;
-			}
-		}
-
-		last_duty_cycle = duty_cycle;
-
-		TIM1->ARR = tim1_arr;
-		TIM1->CCR1 = adjusted_duty_cycle;
-		TIM1->CCR2 = adjusted_duty_cycle;
-		TIM1->CCR3 = adjusted_duty_cycle;
 	}
 
 	average_interval = e_com_time / 3;
@@ -1267,91 +1199,6 @@ int main(void)
 
 		LL_IWDG_ReloadCounter(IWDG);
 
-		adc_counter++;
-		if(adc_counter>100){   // for testing adc and telemetry
-			ADC_raw_temp = ADC_raw_temp - (temperature_offset);
-			converted_degrees =__LL_ADC_CALC_TEMPERATURE(3300,  ADC_raw_temp, LL_ADC_RESOLUTION_12B);
-			//degrees_celsius =((7 * degrees_celsius) + converted_degrees) >> 3;
-
-			deg_smooth_total -= deg_smooth_reading[deg_smooth_index];
-			deg_smooth_reading[deg_smooth_index] = ((7 * degrees_celsius) + converted_degrees) >> 3;
-			deg_smooth_total += deg_smooth_reading[deg_smooth_index];
-
-			deg_smooth_index++;
-			if (deg_smooth_index >= 10)
-				deg_smooth_index = 0;
-
-			degrees_celsius = deg_smooth_total / 10;
-
-			battery_voltage = ((7 * battery_voltage) + ((ADC_raw_volts * 3300 / 4095 * VOLTAGE_DIVIDER)/100)) >> 3;
-			smoothed_raw_current = ((7*smoothed_raw_current + (ADC_raw_current) )>> 3);
-			actual_current = ((smoothed_raw_current * 3300/4095) * MILLIVOLT_PER_AMP )/10  + CURRENT_OFFSET;
-
-			LL_ADC_REG_StartConversion(ADC1);
-			if(LOW_VOLTAGE_CUTOFF){
-				if(battery_voltage < (cell_count * low_cell_volt_cutoff)){
-					low_voltage_count++;
-					if(low_voltage_count > 2000){
-						input = 0;
-						allOff();
-						maskPhaseInterrupts();
-						running = 0;
-						zero_input_count = 0;
-						armed = 0;
-						if (last_error != 3) {
-							last_error = 3;
-							saveEEpromSettings();
-						}
-						program_running = 0;
-					}
-				}
-				else{
-					low_voltage_count = 0;
-				}
-			}
-			adc_counter = 0;
-				
-			#ifdef USE_ADC_INPUT
-			if(ADC_raw_input < 10){
-				zero_input_count++;
-			}
-			else{
-				zero_input_count=0;
-			}
-			#endif
-		}
-
-		if (degrees_celsius >= 115) {
-			if (thermal_protection_active == 0) {
-				allOff();
-				maskPhaseInterrupts();
-				thermal_protection_active = 1;
-
-				if (last_error != 2) {
-					last_error = 2;
-					saveEEpromSettings();
-				}
-
-				playThermalWarningTune();
-				signaltimeout = 0;
-				delayMillis(100);
-				LL_IWDG_ReloadCounter(IWDG);
-			}
-
-			duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
-			adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
-			TIM1->CCR1 = adjusted_duty_cycle;
-			TIM1->CCR2 = adjusted_duty_cycle;
-			TIM1->CCR3 = adjusted_duty_cycle;
-			proportionalBrake();
-			prop_brake_active = 1;
-			continue;
-		}
-		else if (degrees_celsius < 110 && thermal_protection_active)
-			thermal_protection_active = 0;
-		
-
-
 		#ifdef USE_ADC_INPUT
 		UpdateADCInput();		
 		#endif
@@ -1451,6 +1298,154 @@ int main(void)
 		}
 	 	  
 		if ( stepper_sine == 0){
+
+			if (input >= sine_mode_changeover && armed) {
+
+				if (running == 0) {
+					allOff();
+					if (!open_loop_routine) {
+						startMotor();
+					}
+					running = 1;
+					last_duty_cycle = minimum_duty_cycle;
+				}
+
+				duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
+				prop_brake_active = 0;
+			}
+
+			if (input < 47) {
+
+				if (play_tone_flag != 0) {
+					if (play_tone_flag == 1) {
+						playDefaultTone();
+					}
+					if (play_tone_flag == 2) {
+						playChangedTone();
+					}
+
+					play_tone_flag = 0;
+				}
+
+				if (!running) {
+					duty_cycle = 0;
+					open_loop_routine = 1;
+					zero_crosses = 0;
+					bad_count = 0;
+					if (!brake_on_stop)
+						allOff();
+				}
+				old_forward = forward;
+				phase_A_position = 0;
+				phase_B_position = 119;
+				phase_C_position = 239;
+				stepper_sine = 1;
+				stall_counter = 0;
+				minimum_duty_cycle = starting_duty_orig;
+			}
+			else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
+				old_forward = forward;
+				phase_A_position = 60;
+				phase_B_position = 180;
+				phase_C_position = 300;
+				stepper_sine = 1;
+				stall_counter = 0;
+				minimum_duty_cycle = starting_duty_orig;
+			}
+			else if (old_forward != forward) {
+				old_forward = forward;
+				open_loop_routine = 1;
+				stall_counter = 0;
+				zero_crosses = 0;
+				bad_count = 0;
+				minimum_duty_cycle = starting_duty_orig;
+			}
+
+			if (!prop_brake_active) {
+
+				if (running) {
+					p_error = commutation_interval - minimum_commutation;
+					p_error_integral += (p_error);
+					p_error_derivative = (p_error - p_prev_rror);
+					p_prev_rror = p_error;
+
+					boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
+					minimum_duty_cycle = starting_duty_orig + boost;
+
+					if (stall_counter > 20000) {
+						if ((ramp_up_counter % ramp_up_interval) == 0)
+							stall_boost++;
+
+						ramp_up_counter++;
+						commutation_interval = 10000;
+
+						if (!stall_active) {
+							zero_crosses = 0;
+							open_loop_routine = 1;
+							stall_active = 1;
+						}
+						else if (stall_counter > 25000) {
+							stepper_sine = 1;
+						}
+					}
+					else if (stall_boost > 0) {
+						ramp_down_counter++;
+						if ((ramp_down_counter % ramp_down_interval) == 0)
+							stall_boost--;
+					}
+					else {
+						ramp_up_counter = 0;
+						ramp_down_counter = 0;
+					}
+					stall_counter++;
+
+
+					if (minimum_duty_cycle > maximum_duty_orig)
+						minimum_duty_cycle = maximum_duty_orig;
+					else if (minimum_duty_cycle < starting_duty_orig) {
+						minimum_duty_cycle = starting_duty_orig;
+					}
+				}
+
+
+				if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change) {
+					duty_cycle = last_duty_cycle + max_duty_cycle_change;
+
+					if (commutation_interval > 500) {
+						fast_accel = 1;
+					}
+					else {
+						fast_accel = 0;
+					}
+				}
+				else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change) {
+					duty_cycle = last_duty_cycle - max_duty_cycle_change;
+					fast_accel = 0;
+				}
+				else {
+					fast_accel = 0;
+				}
+			}
+
+			if (armed && running && (input > 47)) {
+				adjusted_duty_cycle = ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
+			}
+			else {
+				if (prop_brake_active) {
+					adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
+				}
+				else {
+					adjusted_duty_cycle = 0;
+				}
+			}
+
+			last_duty_cycle = duty_cycle;
+
+			TIM1->ARR = tim1_arr;
+			TIM1->CCR1 = adjusted_duty_cycle;
+			TIM1->CCR2 = adjusted_duty_cycle;
+			TIM1->CCR3 = adjusted_duty_cycle;
+
 			e_rpm = running * (100000/ e_com_time) * 6;
 			k_erpm =  e_rpm / 10;
 
