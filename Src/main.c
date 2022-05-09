@@ -753,7 +753,6 @@ void tenKhzRoutine(){
 		TIM1->CCR3 = adjusted_duty_cycle;
 		proportionalBrake();
 		prop_brake_active = 1;
-		continue;
 	}
 	else if (degrees_celsius < 110 && thermal_protection_active)
 		thermal_protection_active = 0;
