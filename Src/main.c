@@ -98,7 +98,7 @@ uint8_t deg_smooth_reading[10] = { 0,0,0,0,0,0,0,0,0,0 };
 uint8_t deg_smooth_total = 0;
 
 uint16_t armed_timeout_count;
-uint16_t maximum_count = 8000;
+uint16_t maximum_count = 3000;
 uint16_t low_voltage_count = 0;
 uint16_t battery_voltage;  // scale in volts * 10.  1260 is a battery voltage of 12.60
 uint16_t consumption_timer = 0;
@@ -1299,7 +1299,7 @@ int main(void)
 					zero_crosses = 0;
 					open_loop_routine = 1;
 					running = 1;
-					//last_duty_cycle = minimum_duty_cycle;
+					last_duty_cycle = minimum_duty_cycle;
 				}
 
 				duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
@@ -1364,7 +1364,7 @@ int main(void)
 					boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 					minimum_duty_cycle = starting_duty_orig + boost;
 
-					if (INTERVAL_TIMER->CNT > 20000) {
+					if (INTERVAL_TIMER->CNT > 15000) {
 						if ((ramp_up_counter % ramp_up_interval) == 0)
 							stall_boost++;
 
@@ -1466,7 +1466,7 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
 				//zcfoundroutine();
 				stall_boost += 10;
 				maskPhaseInterrupts();
