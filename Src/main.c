@@ -98,7 +98,7 @@ uint8_t deg_smooth_reading[10] = { 0,0,0,0,0,0,0,0,0,0 };
 uint8_t deg_smooth_total = 0;
 
 uint16_t armed_timeout_count;
-uint16_t minimum_commutation = 3000;
+uint16_t maximum_count = 8000;
 uint16_t low_voltage_count = 0;
 uint16_t battery_voltage;  // scale in volts * 10.  1260 is a battery voltage of 12.60
 uint16_t consumption_timer = 0;
@@ -640,7 +640,7 @@ void interruptRoutine(){
 	open_loop_routine = 0;
 
 	maskPhaseInterrupts();
-	INTERVAL_TIMER->CNT = 0 ;
+	INTERVAL_TIMER->CNT = 0;
 
 	waitTime = waitTime >> fast_accel;
 	if (waitTime < min_wait_time)
@@ -650,16 +650,6 @@ void interruptRoutine(){
 	COM_TIMER->ARR = waitTime;
 	COM_TIMER->SR = 0x00;
 	COM_TIMER->DIER |= (0x1UL << (0U));             // enable COM_TIMER interrupt
-}
-
-void startMotor() {
-	if (running == 0) {
-		commutate();
-		commutation_interval = 10000;
-		INTERVAL_TIMER->CNT = 5000;
-		running = 1;
-	}
-	enableCompInterrupts();
 }
 
 void tenKhzRoutine(){
@@ -679,7 +669,6 @@ void tenKhzRoutine(){
 	if (adc_counter > 100) {   // for testing adc and telemetry
 		ADC_raw_temp = ADC_raw_temp - (temperature_offset);
 		converted_degrees = __LL_ADC_CALC_TEMPERATURE(3300, ADC_raw_temp, LL_ADC_RESOLUTION_12B);
-		//degrees_celsius =((7 * degrees_celsius) + converted_degrees) >> 3;
 
 		deg_smooth_total -= deg_smooth_reading[deg_smooth_index];
 		deg_smooth_reading[deg_smooth_index] = ((7 * degrees_celsius) + converted_degrees) >> 3;
@@ -933,7 +922,7 @@ void zcfoundroutine(){   // only used in polling mode, blocking routine.
 		zero_crosses++;
 	}
 	
-	if (zero_crosses >= 100 && commutation_interval <= 2000) {
+	if (zero_crosses >= 200 && commutation_interval <= 2000) {
 		enableCompInterrupts();
 	}
 }
@@ -1203,6 +1192,9 @@ int main(void)
 		#endif
 		stuckcounter = 0;
 
+		if (thermal_protection_active)
+			continue;
+
 		if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
 			playLearnModeTune();
 
@@ -1302,11 +1294,12 @@ int main(void)
 
 				if (running == 0) {
 					allOff();
-					if (!open_loop_routine) {
-						startMotor();
-					}
+					commutate();
+					maskPhaseInterrupts();
+					zero_crosses = 0;
+					open_loop_routine = 1;
 					running = 1;
-					last_duty_cycle = minimum_duty_cycle;
+					//last_duty_cycle = minimum_duty_cycle;
 				}
 
 				duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
@@ -1363,7 +1356,7 @@ int main(void)
 			if (!prop_brake_active) {
 
 				if (running) {
-					p_error = commutation_interval - minimum_commutation;
+					p_error = INTERVAL_TIMER->CNT > - maximum_count;
 					p_error_integral += (p_error);
 					p_error_derivative = (p_error - p_prev_rror);
 					p_prev_rror = p_error;
@@ -1371,20 +1364,16 @@ int main(void)
 					boost = (int)((K_p_duty * p_error) + (K_i_duty * p_error_integral) + (K_d_duty * p_error_derivative));
 					minimum_duty_cycle = starting_duty_orig + boost;
 
-					if (stall_counter > 20000) {
+					if (INTERVAL_TIMER->CNT > 20000) {
 						if ((ramp_up_counter % ramp_up_interval) == 0)
 							stall_boost++;
 
 						ramp_up_counter++;
-						commutation_interval = 10000;
 
 						if (!stall_active) {
 							zero_crosses = 0;
 							open_loop_routine = 1;
 							stall_active = 1;
-						}
-						else if (stall_counter > 25000) {
-							stepper_sine = 1;
 						}
 					}
 					else if (stall_boost > 0) {
@@ -1396,7 +1385,6 @@ int main(void)
 						ramp_up_counter = 0;
 						ramp_down_counter = 0;
 					}
-					stall_counter++;
 
 
 					if (minimum_duty_cycle > maximum_duty_orig)
@@ -1478,8 +1466,9 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
-				zcfoundroutine();
+			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
+				//zcfoundroutine();
+				stall_boost += 10;
 				maskPhaseInterrupts();
 				open_loop_routine = 1;
 				running = 0;
