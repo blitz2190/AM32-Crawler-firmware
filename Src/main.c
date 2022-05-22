@@ -1370,7 +1370,7 @@ int main(void)
 				enter_learn_countdown--;
 			}
 
-			if (!armed && newinput > (1000 + (servo_dead_band << 1))) {
+			if (program_running && !armed && newinput > (1000 + (servo_dead_band << 1))) {
 				CalibrateThrottle();
 			}
 		}
