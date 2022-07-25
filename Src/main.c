@@ -755,30 +755,44 @@ void tenKhzRoutine(){
 				if(!brake_on_stop)	  
 					allOff();
 			}
-			old_forward = forward;
+			//old_forward = forward;
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
 			stepper_sine = 1;
 			stall_counter = 0;
+			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
+
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
-			old_forward = forward;
+			//old_forward = forward;
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
 			stepper_sine = 1;
 			stall_counter = 0;
+			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
 		}
-		else if (old_forward != forward) {
+		
+		
+		if (old_forward != forward) {
+			sin_cycle_complete = 0;
 			old_forward = forward;
+			allOff();
 			open_loop_routine = 1;
 			stall_counter = 0;
 			zero_crosses = 0;
 			bad_count = 0;
 			minimum_duty_cycle = starting_duty_orig;
+			duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
+			adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
+			TIM1->CCR1 = adjusted_duty_cycle;
+			TIM1->CCR2 = adjusted_duty_cycle;
+			TIM1->CCR3 = adjusted_duty_cycle;
+			proportionalBrake();
+			prop_brake_active = 1;
 		}
 
 		if(!prop_brake_active){
