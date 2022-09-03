@@ -774,9 +774,10 @@ void tenKhzRoutine(){
 			stall_counter = 0;
 			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
+			open_loop_routine = 0;
 		}
 		
-		
+		/*
 		if (old_forward != forward) {
 			sin_cycle_complete = 0;
 			old_forward = forward;
@@ -793,7 +794,7 @@ void tenKhzRoutine(){
 			TIM1->CCR3 = adjusted_duty_cycle;
 			proportionalBrake();
 			prop_brake_active = 1;
-		}
+		}*/
 
 		if(!prop_brake_active){
 
