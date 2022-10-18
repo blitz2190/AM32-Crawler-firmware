@@ -161,7 +161,6 @@ int phase_B_position = 119;
 int phase_C_position = 239;
 int step_delay = 100;
 int forward = 1;
-int old_forward = 1;
 int gate_drive_offset = 60;
 int stuckcounter = 0;
 int k_erpm = 0;
@@ -490,7 +489,7 @@ void loadEEpromSettings(){
 #endif // MCU_G071
 
 		min_amplitude = (default_amplitude / 10) * 7;
-		max_amplitude = (default_amplitude / 10) * 11;
+		max_amplitude = (default_amplitude / 100) * 107;
 	}
 
 	BRUSHED_MODE = eepromBuffer[43];
@@ -755,7 +754,6 @@ void tenKhzRoutine(){
 				if(!brake_on_stop)	  
 					allOff();
 			}
-			//old_forward = forward;
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
@@ -766,7 +764,6 @@ void tenKhzRoutine(){
 		}
 
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
-			//old_forward = forward;
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
@@ -776,25 +773,6 @@ void tenKhzRoutine(){
 			minimum_duty_cycle = starting_duty_orig;
 			open_loop_routine = 0;
 		}
-		
-		/*
-		if (old_forward != forward) {
-			sin_cycle_complete = 0;
-			old_forward = forward;
-			allOff();
-			open_loop_routine = 1;
-			stall_counter = 0;
-			zero_crosses = 0;
-			bad_count = 0;
-			minimum_duty_cycle = starting_duty_orig;
-			duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
-			adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
-			TIM1->CCR1 = adjusted_duty_cycle;
-			TIM1->CCR2 = adjusted_duty_cycle;
-			TIM1->CCR3 = adjusted_duty_cycle;
-			proportionalBrake();
-			prop_brake_active = 1;
-		}*/
 
 		if(!prop_brake_active){
 
@@ -1232,10 +1210,10 @@ int main(void)
 	}
 
 	if (dir_reversed == 1){
-		old_forward = forward = 0;
+		forward = 0;
 	}
 	else{
-		old_forward = forward = 1;
+		forward = 1;
 	}
 
 	tim1_arr = TIMER1_MAX_ARR;
@@ -1499,7 +1477,7 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 45000 && running == 1){
+			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
 				zcfoundroutine();
 				maskPhaseInterrupts();
 				open_loop_routine = 1;
