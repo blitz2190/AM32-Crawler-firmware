@@ -488,7 +488,7 @@ void loadEEpromSettings(){
 		default_amplitude = amplitude;
 #endif // MCU_G071
 
-		min_amplitude = (default_amplitude / 10) * 7;
+		min_amplitude = (default_amplitude / 100) * 65;
 		max_amplitude = (default_amplitude / 100) * 107;
 	}
 
@@ -962,8 +962,8 @@ void advanceincrement(int input){
 		}
 	}
 
-	if (degrees_celsius >= 80) {
-		amplitude = map(degrees_celsius, 80, 110, default_amplitude, min_amplitude);//thermal throttling, 120 should be safe 80 at the mcu should be close to right
+	if (degrees_celsius >= 75) {
+		amplitude = map(degrees_celsius, 75, 110, default_amplitude, min_amplitude);//thermal throttling, 120 should be safe 80 at the mcu should be close to right
 	}
 	else {
 		amplitude = map(input, 47, sine_mode_changeover, min_amplitude, max_amplitude);
