@@ -919,6 +919,13 @@ void advanceincrement(int input){
 			advance_inc = old_inc - 1;
 	}
 
+	if (degrees_celsius >= 75) {
+		amplitude = map(degrees_celsius, 75, 110, default_amplitude, min_amplitude);//thermal throttling, 120 should be safe 80 at the mcu should be close to right
+	}
+	else {
+		amplitude = map(((float)input * ((float)advance_inc / (float)max_sin_inc)), 47, sine_mode_changeover, min_amplitude, max_amplitude);
+	}
+
 	if (forward){
 		
 		if(phase_A_position < sin_swicthover_angle_forward && phase_A_position + advance_inc >= sin_swicthover_angle_forward)
@@ -960,13 +967,6 @@ void advanceincrement(int input){
 		if (phase_C_position < 0){
 			phase_C_position += 360;
 		}
-	}
-
-	if (degrees_celsius >= 75) {
-		amplitude = map(degrees_celsius, 75, 110, default_amplitude, min_amplitude);//thermal throttling, 120 should be safe 80 at the mcu should be close to right
-	}
-	else {
-		amplitude = map(input, 47, sine_mode_changeover, min_amplitude, max_amplitude);
 	}
 
 	TIM1->CCR1 = (amplitude * pwmSin[0][phase_A_position]) + (amplitude + 2);
