@@ -471,8 +471,8 @@ void loadEEpromSettings(){
 
 	
 	sine_mode_changeover = map(18, 5, 25, ((TIM1_AUTORELOAD + 1) / 100) * 5, ((TIM1_AUTORELOAD + 1) / 100) * 25);
-	sine_rotations_per_rotation = ceil((eepromBuffer[29] / 2) * num_rotations);
-	sine_rotations_per_rotation_fast = ceil(((eepromBuffer[29] / 2) * (num_rotations / 2)) / 4);
+	sine_rotations_per_rotation = (char)(((float)eepromBuffer[29] / 2.0f) * (float)num_rotations);
+	sine_rotations_per_rotation_fast = (char)((((float)eepromBuffer[29] / 2.0f) * ((float)num_rotations / 2.0f)) / 4.0f);
 
 	if(eepromBuffer[30] > 0 && eepromBuffer[30] < 11){        // drag brake 0-10
 		drag_brake_strength = eepromBuffer[30];
