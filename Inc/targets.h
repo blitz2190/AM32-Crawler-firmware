@@ -26,6 +26,18 @@
 
 
 /****************************      F051 Targets ************************************/
+
+#ifdef Rhino_A_F051
+#define FIRMWARE_NAME           "Rhino-A-F051-Crawler"
+#define DEAD_TIME               20
+#define HARDWARE_GROUP_F0_B
+#define MILLIVOLT_PER_AMP       34
+#define CURRENT_OFFSET          0
+#define TARGET_VOLTAGE_DIVIDER  110
+#define PA6_VOLTAGE
+#define USE_SERIAL_TELEMETRY
+#endif
+
 #ifdef FD6288
 #define FIRMWARE_NAME           "FD6288_PA2  "
 #define DEAD_TIME               45
