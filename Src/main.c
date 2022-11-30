@@ -761,6 +761,7 @@ void tenKhzRoutine(){
 			stall_counter = 0;
 			sin_cycle_complete = 0;
 			minimum_duty_cycle = starting_duty_orig;
+			open_loop_routine = 0;
 		}
 
 		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
@@ -1261,7 +1262,8 @@ int main(void)
 		LL_IWDG_ReloadCounter(IWDG);
 
 		adc_counter++;
-		if(adc_counter>100){   // for testing adc and telemetry
+		if(adc_counter > 100){   // for testing adc and telemetry
+			adc_counter = 0;
 			ADC_raw_temp = ADC_raw_temp - (temperature_offset);
 			converted_degrees =__LL_ADC_CALC_TEMPERATURE(3300,  ADC_raw_temp, LL_ADC_RESOLUTION_12B);
 			//degrees_celsius =((7 * degrees_celsius) + converted_degrees) >> 3;
@@ -1296,13 +1298,13 @@ int main(void)
 							saveEEpromSettings();
 						}
 						program_running = 0;
+						continue;
 					}
 				}
 				else{
 					low_voltage_count = 0;
 				}
 			}
-			adc_counter = 0;
 				
 			#ifdef USE_ADC_INPUT
 			if(ADC_raw_input < 10){
@@ -1329,6 +1331,15 @@ int main(void)
 				signaltimeout = 0;
 				delayMillis(100);
 				LL_IWDG_ReloadCounter(IWDG);
+
+				phase_A_position = 0;
+				phase_B_position = 119;
+				phase_C_position = 239;
+				stepper_sine = 1;
+				stall_counter = 0;
+				sin_cycle_complete = 0;
+				minimum_duty_cycle = starting_duty_orig;
+				open_loop_routine = 0;
 			}
 
 			duty_cycle = (TIMER1_MAX_ARR - 19) + drag_brake_strength * 2;
