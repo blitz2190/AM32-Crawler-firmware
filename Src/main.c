@@ -218,7 +218,7 @@ char dshot = 0;
 char servoPwm = 0;
 char step = 1;
 char stall_active = 0;
-char play_tone_flag = 0;
+char play_tone_flag = 1;
 
 #ifdef MCU_G071
 char min_wait_time = 8;
@@ -638,7 +638,7 @@ void interruptRoutine(){
 	open_loop_routine = 0;
 
 	maskPhaseInterrupts();
-	INTERVAL_TIMER->CNT = 0 ;
+	INTERVAL_TIMER->CNT = 0;
 
 	waitTime = waitTime >> fast_accel;
 	if (waitTime < min_wait_time)
@@ -654,7 +654,7 @@ void startMotor() {
 	if (running == 0) {
 		commutate();
 		commutation_interval = 10000;
-		INTERVAL_TIMER->CNT = 5000;
+		INTERVAL_TIMER->CNT = 0;
 		running = 1;
 	}
 	enableCompInterrupts();
@@ -722,10 +722,10 @@ void tenKhzRoutine(){
 			
 			if (running == 0) {
 				allOff();
+				maskPhaseInterrupts();
 				if (!open_loop_routine) {
 					startMotor();
 				}
-				running = 1;
 				last_duty_cycle = minimum_duty_cycle;
 			}
 
@@ -1488,8 +1488,7 @@ int main(void)
 					}
 				}
 			}
-			if (INTERVAL_TIMER->CNT > 30000 && running == 1){
-				zcfoundroutine();
+			if (INTERVAL_TIMER->CNT > 35000 && running == 1){
 				maskPhaseInterrupts();
 				open_loop_routine = 1;
 				running = 0;
