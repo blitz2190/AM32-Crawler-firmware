@@ -743,7 +743,7 @@ void tenKhzRoutine(){
 					playChangedTone();
 				}
 
-				play_tone_flag = 0;
+				//play_tone_flag = 0;
 			}
 
 			if (!running){
