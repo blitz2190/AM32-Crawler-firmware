@@ -735,9 +735,16 @@ void tenKhzRoutine(){
 
 		if (input < 47){
 
-			
-			playDefaultTone();
-				
+			if (play_tone_flag != 0) {
+				if (play_tone_flag == 1) {
+					playDefaultTone();
+				}
+				if (play_tone_flag == 2) {
+					playChangedTone();
+				}
+
+				play_tone_flag = 0;
+			}
 
 			if (!running){
 				duty_cycle = 0;
@@ -1002,6 +1009,7 @@ void SwitchOver() {
 	prop_brake_active = 0;
 	last_average_interval = average_interval;
 	zero_crosses = 0;
+	play_tone_flag = 1;
 
 	commutation_interval = 9000;
 	average_interval = 9000;
