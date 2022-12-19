@@ -318,17 +318,23 @@ void playInputTune(){
 }
 
 void playDefaultTone(){
-	 LL_IWDG_ReloadCounter(IWDG);
-	TIM1->PSC = 50;
+	__disable_irq();
+
 	setCaptureCompare();
-	comStep(2);
-	delayMillis(100);
-	TIM1->PSC = 30;
-	delayMillis(100);
-	allOff();
-	TIM1->PSC = 0;
+	comStep(3);       // activate a pwm channel
+
+	TIM1->PSC = 25;        // frequency of beep
+	delayMillis(200);         // duration of beep
+	comStep(5);
+	LL_IWDG_ReloadCounter(IWDG);
+	signaltimeout = 0;
+	TIM1->PSC = 40;            // next beep is higher frequency
+	delayMillis(200);
+	allOff();                // turn all channels low again
+	TIM1->PSC = 0;           // set prescaler back to 0.
 	signaltimeout = 0;
 
+	__enable_irq();
 }
 
 void playChangedTone(){
