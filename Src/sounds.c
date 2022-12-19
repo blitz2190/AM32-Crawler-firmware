@@ -321,17 +321,16 @@ void playDefaultTone(){
 	__disable_irq();
 
 	setCaptureCompare();
-	comStep(3);       // activate a pwm channel
+	comStep(3);
 
-	TIM1->PSC = 25;        // frequency of beep
-	delayMillis(200);         // duration of beep
+	TIM1->PSC = 25;
+	delayMillis(200);
 	comStep(5);
 	LL_IWDG_ReloadCounter(IWDG);
-	signaltimeout = 0;
-	TIM1->PSC = 40;            // next beep is higher frequency
+	TIM1->PSC = 25;
 	delayMillis(200);
-	allOff();                // turn all channels low again
-	TIM1->PSC = 0;           // set prescaler back to 0.
+	allOff();
+	TIM1->PSC = 0;
 	signaltimeout = 0;
 
 	__enable_irq();

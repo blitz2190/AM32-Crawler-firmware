@@ -735,16 +735,9 @@ void tenKhzRoutine(){
 
 		if (input < 47){
 
-			if (play_tone_flag != 0) {
-				if (play_tone_flag == 1) {
-					playDefaultTone();
-				}
-				if (play_tone_flag == 2) {
-					playChangedTone();
-				}
-
-				//play_tone_flag = 0;
-			}
+			
+			playDefaultTone();
+				
 
 			if (!running){
 				duty_cycle = 0;
