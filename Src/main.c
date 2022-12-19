@@ -732,34 +732,9 @@ void tenKhzRoutine(){
 
 			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
 			prop_brake_active = 0;
-		}
+		}		
 
-		if (input < 47){
-
-			if (last_error != 4) {
-				last_error = 4;
-				saveEEpromSettings();
-			}
-
-			if (!running){
-				duty_cycle = 0;
-				open_loop_routine = 1;
-				zero_crosses = 0;
-				bad_count = 0;
-				if(!brake_on_stop)	  
-					allOff();
-			}
-			phase_A_position = 0;
-			phase_B_position = 119;
-			phase_C_position = 239;
-			stepper_sine = 1;
-			stall_counter = 0;
-			sin_cycle_complete = 0;
-			minimum_duty_cycle = starting_duty_orig;
-			open_loop_routine = 0;
-		}
-
-		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step_forward) {
+		if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step_forward) {
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
@@ -1448,6 +1423,23 @@ int main(void)
 			}
 
 			continue; //skip the rest of the while loop for brushed motors
+		}
+		else if (input < 47) {
+
+				if (last_error != 4) {
+					last_error = 4;
+					saveEEpromSettings();
+				}
+
+				phase_A_position = 0;
+				phase_B_position = 119;
+				phase_C_position = 239;
+				stepper_sine = 1;
+				stall_counter = 0;
+				sin_cycle_complete = 0;
+				minimum_duty_cycle = starting_duty_orig;
+				open_loop_routine = 0;
+			}
 		}
 	 	  
 		if ( stepper_sine == 0){
