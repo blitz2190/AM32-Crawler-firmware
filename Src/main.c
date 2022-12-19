@@ -1431,14 +1431,6 @@ int main(void)
 				saveEEpromSettings();
 			}
 
-			if (!running) {
-				duty_cycle = 0;
-				open_loop_routine = 1;
-				zero_crosses = 0;
-				bad_count = 0;
-				if (!brake_on_stop)
-					allOff();
-			}
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
