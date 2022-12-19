@@ -146,7 +146,8 @@ int minimum_duty_cycle = DEAD_TIME;
 int adc_counter = 0;
 int e_com_time = 0;
 int dshot_frametime = 0;
-int changeover_step = 1;
+int changeover_step_forward = 1;
+int changeover_step_reverse = 6;
 int sin_swicthover_angle_forward = 240;
 int sin_swicthover_angle_reverse = 330;
 int filter_level = 5;
@@ -735,15 +736,9 @@ void tenKhzRoutine(){
 
 		if (input < 47){
 
-			if (play_tone_flag != 0) {
-				if (play_tone_flag == 1) {
-					playDefaultTone();
-				}
-				if (play_tone_flag == 2) {
-					playChangedTone();
-				}
-
-				play_tone_flag = 0;
+			if (last_error != 4) {
+				last_error = 4;
+				saveEEpromSettings();
 			}
 
 			if (!running){
@@ -764,7 +759,7 @@ void tenKhzRoutine(){
 			open_loop_routine = 0;
 		}
 
-		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step) {
+		else if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step_forward) {
 			phase_A_position = 60;
 			phase_B_position = 180;
 			phase_C_position = 300;
@@ -1007,7 +1002,6 @@ void SwitchOver() {
 	running = 1;
 	open_loop_routine = 1;
 	prop_brake_active = 0;
-	last_average_interval = average_interval;
 	zero_crosses = 0;
 	play_tone_flag = 1;
 
@@ -1024,7 +1018,8 @@ void SwitchOver() {
 	TIM1->CCR2 = adjusted_duty_cycle;
 	TIM1->CCR3 = adjusted_duty_cycle;
 
-	step = changeover_step;
+
+	step = changeover_step_forward;
 	comStep(step);
 	changeCompInput();
 	//enableCompInterrupts();
