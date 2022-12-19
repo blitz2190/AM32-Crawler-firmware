@@ -993,8 +993,11 @@ void SwitchOver() {
 	TIM1->CCR2 = adjusted_duty_cycle;
 	TIM1->CCR3 = adjusted_duty_cycle;
 
+	if ((forward == 1 && dir_reversed == 0) || (forward == 0 && dir_reversed == 1))
+		step = changeover_step_forward;
+	else
+		step = changeover_step_reverse;
 
-	step = changeover_step_forward;
 	comStep(step);
 	changeCompInput();
 	//enableCompInterrupts();
