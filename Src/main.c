@@ -1429,11 +1429,6 @@ int main(void)
 		}
 		else if (input < 47) {
 
-			if (last_error != 4) {
-				last_error = 4;
-				saveEEpromSettings();
-			}
-
 			phase_A_position = 0;
 			phase_B_position = 119;
 			phase_C_position = 239;
