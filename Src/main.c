@@ -732,17 +732,6 @@ void tenKhzRoutine(){
 
 			duty_cycle = map(input, sine_mode_changeover, 2047, minimum_duty_cycle, maximum_duty_cycle);
 			prop_brake_active = 0;
-		}		
-
-		if (input < ((sine_mode_changeover / 100) * 95) && step == changeover_step_forward) {
-			phase_A_position = 60;
-			phase_B_position = 180;
-			phase_C_position = 300;
-			stepper_sine = 1;
-			stall_counter = 0;
-			sin_cycle_complete = 0;
-			minimum_duty_cycle = starting_duty_orig;
-			open_loop_routine = 0;
 		}
 
 		if(!prop_brake_active){
@@ -1435,7 +1424,7 @@ int main(void)
 			stepper_sine = 1;
 			stall_counter = 0;
 			sin_cycle_complete = 0;
-			minimum_duty_cycle = starting_duty_orig;
+			//minimum_duty_cycle = starting_duty_orig;
 			open_loop_routine = 0;
 		}
 	 	  
