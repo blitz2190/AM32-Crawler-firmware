@@ -1039,6 +1039,9 @@ void CalibrateThrottle() {
 				LL_IWDG_ReloadCounter(IWDG);
 				set_value_timeout++;
 			}
+#ifdef USE_ADC_INPUT
+			UpdateADCInput();
+#endif
 			current_max = newinput;
 			playValueSetTune();
 		}
@@ -1050,6 +1053,9 @@ void CalibrateThrottle() {
 				LL_IWDG_ReloadCounter(IWDG);
 				set_value_timeout++;
 			}
+#ifdef USE_ADC_INPUT
+			UpdateADCInput();
+#endif
 			current_min = newinput;
 			playValueSetTune();
 		}
