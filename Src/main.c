@@ -1009,7 +1009,7 @@ void CalibrateThrottle() {
 	int current_resting = 1500;
 	int last_input = newinput;
 	int timout_counter = 0;
-	int   = 0;
+	int set_value_timeout = 0;
 	throttle_learn_active = 1;
 
 	while (throttle_learn_active) {
