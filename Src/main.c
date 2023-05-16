@@ -1005,6 +1005,9 @@ void CalibrateThrottle() {
 	allOff();
 	throttle_learn_active = 1;
 	LL_IWDG_ReloadCounter(IWDG);
+	stuckcounter = 0;
+	signaltimeout = 0;
+	zero_input_count = 0;
 	playEnterLearnModeTune();
 	int current_max = 1500;
 	int current_min = 1500;
