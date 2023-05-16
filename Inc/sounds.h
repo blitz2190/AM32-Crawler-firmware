@@ -20,6 +20,8 @@ void playBeaconTune3(void);
 void playDuskingTune(void);
 void playDefaultTone(void);
 void playChangedTone(void);
+void playEnterLearnModeTune(void);
+void playValueSetTune(void);
 void playLearnModeTune(void);
 void playEndLearnModeTune(void);
 void playSingleBeep(void);

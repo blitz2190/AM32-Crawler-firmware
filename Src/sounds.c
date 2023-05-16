@@ -184,6 +184,40 @@ void playThermalWarningTune() {
 	__enable_irq();
 }
 
+void playEnterLearnModeTune() {
+	__disable_irq();
+
+	setCaptureCompare();
+	comStep(3);       // activate a pwm channel
+
+	TIM1->PSC = 70;        // frequency of beep
+	delayMillis(200);         // duration of beep
+	comStep(5);
+
+	TIM1->PSC = 50;            // next beep is higher frequency
+	delayMillis(200);              // turn all channels low again
+
+	TIM1->PSC = 0;           // set prescaler back to 0.
+	signaltimeout = 0;
+
+	__enable_irq();
+}
+
+void playValueSetTune() {
+	__disable_irq();
+
+	setCaptureCompare();
+	comStep(3);       // activate a pwm channel
+
+	TIM1->PSC = 20;        // frequency of beep
+	delayMillis(200);         // duration of beep
+	comStep(5);             // turn all channels low again
+
+	TIM1->PSC = 0;           // set prescaler back to 0.
+	signaltimeout = 0;
+
+	__enable_irq();
+}
 
 void playLearnModeTune() {
 	__disable_irq();

@@ -42,7 +42,7 @@
 //===========================================================================
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 25
+#define VERSION_MINOR 26
 char dir_reversed = 0;
 char brake_on_stop = 1;
 char program_running = 1; //low voltage turns off main loop
@@ -1003,13 +1003,13 @@ void UpdateADCInput() {
 
 void CalibrateThrottle() {
 	allOff();
-	playLearnModeTune();
-	int current_max = newinput;
-	int current_min = newinput;
-	int current_resting = newinput;
+	playEnterLearnModeTune();
+	int current_max = 1500;
+	int current_min = 1500;
+	int current_resting = 1500;
 	int last_input = newinput;
 	int timout_counter = 0;
-	char changed = 0;
+	int   = 0;
 	throttle_learn_active = 1;
 
 	while (throttle_learn_active) {
@@ -1026,19 +1026,27 @@ void CalibrateThrottle() {
 
 		last_input = newinput;
 
-		if (timout_counter >= 3000) {
+		if (timout_counter >= 2500) {
 			throttle_learn_active = 0;
 			current_resting = newinput;
 		}
 
 		if (newinput > current_max) {
+			set_value_timeout = 0;
+			while (set_value_timeout < 1000) {
+				set_value_timeout++;
+			}
 			current_max = newinput;
-			changed = 1;
+			playValueSetTune();
 		}
 
 		if (newinput < current_min) {
+			set_value_timeout = 0;
+			while (set_value_timeout < 1000) {
+				set_value_timeout++;
+			}
 			current_min = newinput;
-			changed = 1;
+			playValueSetTune();
 		}
 
 		delayMillis(1);
