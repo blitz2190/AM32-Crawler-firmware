@@ -862,7 +862,7 @@ void tenKhzRoutine(){
 			for (int i = 0; i < 64; i++) {
 				dma_buffer[i] = 0;
 			}
-			//NVIC_SystemReset();
+			NVIC_SystemReset();
 		}
 	}
 }
@@ -1003,6 +1003,7 @@ void UpdateADCInput() {
 
 void CalibrateThrottle() {
 	allOff();
+	throttle_learn_active = 1;
 	LL_IWDG_ReloadCounter(IWDG);
 	playEnterLearnModeTune();
 	int current_max = 1500;
@@ -1011,7 +1012,6 @@ void CalibrateThrottle() {
 	int last_input = newinput;
 	int timout_counter = 0;
 	int set_value_timeout = 0;
-	throttle_learn_active = 1;
 	char learning = 1;
 	delayMillis(1000);
 
