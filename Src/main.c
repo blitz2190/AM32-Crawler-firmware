@@ -1052,7 +1052,7 @@ void CalibrateThrottle() {
 		delayMillis(1);
 	}
 
-	if (changed) {
+	if (current_max != 1500 || current_min != 1500 || current_resting != 1500) {
 		eepromBuffer[23] = (current_min - 750) / 2;
 		eepromBuffer[24] = (current_max - 1750) / 2;
 		eepromBuffer[25] = current_resting - 1374;
