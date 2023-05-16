@@ -190,7 +190,7 @@ void playEnterLearnModeTune() {
 	setCaptureCompare();
 	comStep(3);       // activate a pwm channel
 
-	TIM1->PSC = 70;        // frequency of beep
+	TIM1->PSC = 50;        // frequency of beep
 	delayMillis(200);         // duration of beep
 	LL_IWDG_ReloadCounter(IWDG);
 	comStep(5);

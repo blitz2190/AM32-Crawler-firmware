@@ -841,7 +841,6 @@ void tenKhzRoutine(){
 
 	
 	signaltimeout++;
-	/*
 	if (signaltimeout > 10000) {
 		if (armed || signaltimeout > 25000) {
 			allOff();
@@ -865,7 +864,7 @@ void tenKhzRoutine(){
 			}
 			NVIC_SystemReset();
 		}
-	}*/
+	}
 }
 
 void advanceincrement(int input){	
@@ -1017,7 +1016,7 @@ void CalibrateThrottle() {
 	int timout_counter = 0;
 	int set_value_timeout = 0;
 	char learning = 1;
-	delayMillis(1000);
+	delayMillis(500);
 
 	while (learning == 1) {
 		LL_IWDG_ReloadCounter(IWDG);
