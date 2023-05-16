@@ -1011,6 +1011,7 @@ void CalibrateThrottle() {
 	int timout_counter = 0;
 	int set_value_timeout = 0;
 	throttle_learn_active = 1;
+	delayMillis(500);
 
 	while (throttle_learn_active) {
 		LL_IWDG_ReloadCounter(IWDG);
@@ -1033,7 +1034,8 @@ void CalibrateThrottle() {
 
 		if (newinput > current_max) {
 			set_value_timeout = 0;
-			while (set_value_timeout < 1000) {
+			while (set_value_timeout < 1500) {
+				delayMillis(1);
 				set_value_timeout++;
 			}
 			current_max = newinput;
@@ -1042,7 +1044,8 @@ void CalibrateThrottle() {
 
 		if (newinput < current_min) {
 			set_value_timeout = 0;
-			while (set_value_timeout < 1000) {
+			while (set_value_timeout < 1500) {
+				delayMillis(1);
 				set_value_timeout++;
 			}
 			current_min = newinput;
