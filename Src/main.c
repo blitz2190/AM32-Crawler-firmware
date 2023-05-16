@@ -841,6 +841,7 @@ void tenKhzRoutine(){
 
 	
 	signaltimeout++;
+	/*
 	if (signaltimeout > 10000) {
 		if (armed || signaltimeout > 25000) {
 			allOff();
@@ -864,7 +865,7 @@ void tenKhzRoutine(){
 			}
 			NVIC_SystemReset();
 		}
-	}
+	}*/
 }
 
 void advanceincrement(int input){	
