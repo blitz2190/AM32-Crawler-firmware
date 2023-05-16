@@ -1014,7 +1014,7 @@ void CalibrateThrottle() {
 	char learning = 1;
 	delayMillis(1000);
 
-	while (learning) {
+	while (learning == 1) {
 		LL_IWDG_ReloadCounter(IWDG);
 
 #ifdef USE_ADC_INPUT
