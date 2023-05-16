@@ -402,7 +402,7 @@ void checkForHighSignal(){
 		delayMicros(10);
 	}
 	LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_NO);
-	if(low_pin_count > 5){
+	if(low_pin_count > 5 || throttle_learn_active){
 		return;      // its either a signal or a disconnected pin
 	}
 	else{
@@ -1017,9 +1017,6 @@ void CalibrateThrottle() {
 
 	while (learning == 1) {
 		LL_IWDG_ReloadCounter(IWDG);
-		stuckcounter = 0;
-		signaltimeout = 0;
-		zero_input_count = 0;
 
 #ifdef USE_ADC_INPUT
 		UpdateADCInput();
@@ -1037,9 +1034,6 @@ void CalibrateThrottle() {
 			while (set_value_timeout < 1500) {
 				delayMillis(1);
 				LL_IWDG_ReloadCounter(IWDG);
-				stuckcounter = 0;
-				signaltimeout = 0;
-				zero_input_count = 0;
 				set_value_timeout++;
 			}
 			current_max = newinput;
@@ -1051,9 +1045,6 @@ void CalibrateThrottle() {
 			while (set_value_timeout < 1500) {
 				delayMillis(1);
 				LL_IWDG_ReloadCounter(IWDG);
-				stuckcounter = 0;
-				signaltimeout = 0;
-				zero_input_count = 0;
 				set_value_timeout++;
 			}
 			current_min = newinput;
@@ -1077,12 +1068,7 @@ void CalibrateThrottle() {
 		eepromBuffer[25] = current_resting - 1374;
 		saveEEpromSettings();
 		playEndLearnModeTune();
-		LL_IWDG_ReloadCounter(IWDG);
-		stuckcounter = 0;
-		signaltimeout = 0;
-		zero_input_count = 0;
 		delayMillis(500);
-
 	}
 
 	throttle_learn_active = 0;
