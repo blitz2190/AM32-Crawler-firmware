@@ -402,7 +402,7 @@ void checkForHighSignal(){
 		delayMicros(10);
 	}
 	LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_NO);
-	if(low_pin_count > 5 || throttle_learn_active){
+	if(low_pin_count > 5){
 		return;      // its either a signal or a disconnected pin
 	}
 	else{
@@ -862,7 +862,7 @@ void tenKhzRoutine(){
 			for (int i = 0; i < 64; i++) {
 				dma_buffer[i] = 0;
 			}
-			NVIC_SystemReset();
+			//NVIC_SystemReset();
 		}
 	}
 }
@@ -1003,6 +1003,7 @@ void UpdateADCInput() {
 
 void CalibrateThrottle() {
 	allOff();
+	LL_IWDG_ReloadCounter(IWDG);
 	playEnterLearnModeTune();
 	int current_max = 1500;
 	int current_min = 1500;
@@ -1012,7 +1013,6 @@ void CalibrateThrottle() {
 	int set_value_timeout = 0;
 	throttle_learn_active = 1;
 	char learning = 1;
-	LL_IWDG_ReloadCounter(IWDG);
 	delayMillis(1000);
 
 	while (learning == 1) {
@@ -1219,7 +1219,7 @@ int main(void)
 	inputSet = 1;
 
 	#else
-	//checkForHighSignal();     // will reboot if signal line is high for 10ms
+	checkForHighSignal();     // will reboot if signal line is high for 10ms
 	receiveDshotDma();
 	#endif
 

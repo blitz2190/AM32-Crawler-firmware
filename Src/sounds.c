@@ -192,10 +192,12 @@ void playEnterLearnModeTune() {
 
 	TIM1->PSC = 70;        // frequency of beep
 	delayMillis(200);         // duration of beep
+	LL_IWDG_ReloadCounter(IWDG);
 	comStep(5);
 
 	TIM1->PSC = 50;            // next beep is higher frequency
 	delayMillis(200);              // turn all channels low again
+	LL_IWDG_ReloadCounter(IWDG);
 
 	TIM1->PSC = 0;           // set prescaler back to 0.
 	signaltimeout = 0;
@@ -210,8 +212,8 @@ void playValueSetTune() {
 	comStep(3);       // activate a pwm channel
 
 	TIM1->PSC = 20;        // frequency of beep
-	delayMillis(200);         // duration of beep
-	comStep(5);             // turn all channels low again
+	delayMillis(200);         // duration of beep  
+	LL_IWDG_ReloadCounter(IWDG); // turn all channels low again
 
 	TIM1->PSC = 0;           // set prescaler back to 0.
 	signaltimeout = 0;
@@ -227,10 +229,12 @@ void playLearnModeTune() {
 
 	TIM1->PSC = 50;        // frequency of beep
 	delayMillis(200);         // duration of beep
+	LL_IWDG_ReloadCounter(IWDG);
 	comStep(5);
 
 	TIM1->PSC = 50;            // next beep is higher frequency
 	delayMillis(200);              // turn all channels low again
+	LL_IWDG_ReloadCounter(IWDG);
 
 	TIM1->PSC = 0;           // set prescaler back to 0.
 	signaltimeout = 0;
@@ -246,10 +250,12 @@ void playEndLearnModeTune() {
 
 	TIM1->PSC = 25;        // frequency of beep
 	delayMillis(200);         // duration of beep
+	LL_IWDG_ReloadCounter(IWDG);
 	comStep(5);
 
 	TIM1->PSC = 25;            // next beep is higher frequency
 	delayMillis(200);              // turn all channels low again
+	LL_IWDG_ReloadCounter(IWDG);
 
 	TIM1->PSC = 0;           // set prescaler back to 0.
 	signaltimeout = 0;
