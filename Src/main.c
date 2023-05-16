@@ -1011,7 +1011,7 @@ void CalibrateThrottle() {
 	int timout_counter = 0;
 	int set_value_timeout = 0;
 	throttle_learn_active = 1;
-	delayMillis(500);
+	delayMillis(1000);
 
 	while (throttle_learn_active) {
 		LL_IWDG_ReloadCounter(IWDG);
@@ -1027,15 +1027,11 @@ void CalibrateThrottle() {
 
 		last_input = newinput;
 
-		if (timout_counter >= 2500) {
-			throttle_learn_active = 0;
-			current_resting = newinput;
-		}
-
 		if (newinput > current_max) {
 			set_value_timeout = 0;
 			while (set_value_timeout < 1500) {
-				delayMillis(1);
+				delayMillis(1500);
+				LL_IWDG_ReloadCounter(IWDG);
 				set_value_timeout++;
 			}
 			current_max = newinput;
@@ -1046,10 +1042,19 @@ void CalibrateThrottle() {
 			set_value_timeout = 0;
 			while (set_value_timeout < 1500) {
 				delayMillis(1);
+				LL_IWDG_ReloadCounter(IWDG);
 				set_value_timeout++;
 			}
 			current_min = newinput;
 			playValueSetTune();
+		}
+
+		if (timout_counter >= 2500 && current_max != current_resting && current_min != current_resting) {
+			throttle_learn_active = 0;
+			current_resting = newinput;
+		}
+		else if (timout_counter >= 5000) {
+			throttle_learn_active = 0;
 		}
 
 		delayMillis(1);
@@ -1060,9 +1065,8 @@ void CalibrateThrottle() {
 		eepromBuffer[24] = (current_max - 1750) / 2;
 		eepromBuffer[25] = current_resting - 1374;
 		saveEEpromSettings();
+		playEndLearnModeTune();
 	}
-
-	playEndLearnModeTune();
 }
 
 int MapThrottle(int requested_throttle) {
