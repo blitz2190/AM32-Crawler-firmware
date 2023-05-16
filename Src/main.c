@@ -1011,9 +1011,10 @@ void CalibrateThrottle() {
 	int timout_counter = 0;
 	int set_value_timeout = 0;
 	throttle_learn_active = 1;
+	char learning = 1;
 	delayMillis(1000);
 
-	while (throttle_learn_active) {
+	while (learning) {
 		LL_IWDG_ReloadCounter(IWDG);
 
 #ifdef USE_ADC_INPUT
@@ -1050,11 +1051,11 @@ void CalibrateThrottle() {
 		}
 
 		if (timout_counter >= 2500 && current_max != current_resting && current_min != current_resting) {
-			throttle_learn_active = 0;
+			learning = 0;
 			current_resting = newinput;
 		}
 		else if (timout_counter >= 5000) {
-			throttle_learn_active = 0;
+			learning = 0;
 		}
 
 		delayMillis(1);
@@ -1069,7 +1070,7 @@ void CalibrateThrottle() {
 		delayMillis(500);
 	}
 
-	NVIC_SystemReset();
+	throttle_learn_active = 0;
 }
 
 int MapThrottle(int requested_throttle) {
