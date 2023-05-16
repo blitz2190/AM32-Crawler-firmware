@@ -1219,7 +1219,7 @@ int main(void)
 	inputSet = 1;
 
 	#else
-	checkForHighSignal();     // will reboot if signal line is high for 10ms
+	//checkForHighSignal();     // will reboot if signal line is high for 10ms
 	receiveDshotDma();
 	#endif
 
