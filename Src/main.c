@@ -1030,7 +1030,7 @@ void CalibrateThrottle() {
 		if (newinput > current_max) {
 			set_value_timeout = 0;
 			while (set_value_timeout < 1500) {
-				delayMillis(1500);
+				delayMillis(1);
 				LL_IWDG_ReloadCounter(IWDG);
 				set_value_timeout++;
 			}
@@ -1038,7 +1038,7 @@ void CalibrateThrottle() {
 			playValueSetTune();
 		}
 
-		if (newinput < current_min) {
+		else if (current_max != current_min && newinput < current_min) {
 			set_value_timeout = 0;
 			while (set_value_timeout < 1500) {
 				delayMillis(1);
