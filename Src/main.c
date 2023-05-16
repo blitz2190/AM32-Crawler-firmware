@@ -674,7 +674,7 @@ void tenKhzRoutine(){
 		return;
 	}
 
-	if (thermal_protection_active || throttle_learn_active)
+	if (thermal_protection_active == 1 || throttle_learn_active == 1)
 		return;
 
 	if(!armed && inputSet){
@@ -1066,7 +1066,10 @@ void CalibrateThrottle() {
 		eepromBuffer[25] = current_resting - 1374;
 		saveEEpromSettings();
 		playEndLearnModeTune();
+		delayMillis(500);
 	}
+
+	NVIC_SystemReset();
 }
 
 int MapThrottle(int requested_throttle) {
